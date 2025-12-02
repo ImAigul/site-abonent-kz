@@ -63,27 +63,70 @@ function renderPage() {
   let html = '';
 
   if (CURRENT_PAGE === 'home') {
-    html = `<h1>${tx.home_title}</h1><p>${tx.home_desc}</p>`;
+    html = `
+      <h1>${tx.home_title}</h1>
+      <p>${tx.home_desc}</p>
+    `;
   }
 
   if (CURRENT_PAGE === 'send') {
-    html = `<h1>${tx.send_title}</h1><p>${tx.send_desc}</p>`;
+    html = `
+      <h1>${tx.send_title}</h1>
+      <p>${tx.send_desc}</p>
+
+      <section class="card">
+        <h2 class="card-title">${tx.send_step_location_title}</h2>
+        <p class="card-hint">${tx.send_step_location_hint}</p>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="region-select">${tx.send_region_label}</label>
+            <select id="region-select" disabled>
+              <option value="">— ... —</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="district-select">${tx.send_district_label}</label>
+            <select id="district-select" disabled>
+              <option value="">— ... —</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="locality-select">${tx.send_locality_label}</label>
+            <select id="locality-select" disabled>
+              <option value="">— ... —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button id="send-location-continue" class="btn-primary" disabled>
+            ${tx.send_continue_btn}
+          </button>
+        </div>
+      </section>
+    `;
   }
 
   if (CURRENT_PAGE === 'about') {
-    html = `<h1>${tx.about_title}</h1><p>${tx.about_desc}</p>`;
+    html = `<h1>${tx.about_title || ''}</h1><p>${tx.about_desc || ''}</p>`;
   }
 
   if (CURRENT_PAGE === 'contacts') {
-    html = `<h1>${tx.contacts_title}</h1><p>${tx.contacts_desc}</p>`;
+    html = `<h1>${tx.contacts_title || ''}</h1><p>${tx.contacts_desc || ''}</p>`;
   }
 
   if (CURRENT_PAGE === 'help') {
-    html = `<h1>${tx.help_title}</h1><p>${tx.help_desc}</p>`;
+    html = `<h1>${tx.help_title || ''}</h1><p>${tx.help_desc || ''}</p>`;
   }
 
   page.innerHTML = html;
+
+  // позже сюда добавим: initSendPage()
 }
+
 
 // ===============================
 // Первый запуск
