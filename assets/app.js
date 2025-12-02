@@ -95,7 +95,7 @@ function renderHeader() {
 // Рендер страниц SPA
 // ===============================
 function renderPage() {
-  const page = document.getElementById('site-page') || document.getElementById('app');
+  const page = document.getElementById('app'); // ← всегда рендерим в #app
   const tx = t();
 
   let html = '';
@@ -316,8 +316,6 @@ function initSendPage() {
     continueBtn.onclick = () => {
       if (!SELECTED_LOCATION) return;
 
-      // Пока просто показываем alert.
-      // Дальше здесь будет шаг "выбор типа клиента (ФЛ/ЮЛ/Поставщик)".
       const chain =
         `${SELECTED_LOCATION.region}` +
         (SELECTED_LOCATION.district || SELECTED_LOCATION.okrug
