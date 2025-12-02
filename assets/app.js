@@ -4,7 +4,7 @@
 let LANG = 'kk';          // по умолчанию казахский
 let CURRENT_PAGE = 'home';
 let SELECTED_LOCATION = null; // выбранный КАТО и подписи
-let CLIENT_TYPE = null;       // FL / UL / SUPPLIER
+let CLIENT_TYPE = null;       // 'FL' | 'UL' | 'SUPPLIER'
 
 // Простейший мок KATO для фронта (потом заменим на API)
 const KATO_MOCK = [
@@ -102,13 +102,31 @@ function renderPage() {
 
   let html = '<main class="site-main">';
 
+  // Главная с тремя большими кнопками
   if (CURRENT_PAGE === 'home') {
     html += `
       <h1>${tx.home_title}</h1>
       <p>${tx.home_desc}</p>
+
+      <section class="card">
+        <h2 class="card-title">${tx.home_choose_service}</h2>
+
+        <div class="user-type-grid">
+          <button class="user-type-btn home-user-type-btn" data-client-type="FL">
+            ${tx.home_service_fl}
+          </button>
+          <button class="user-type-btn home-user-type-btn" data-client-type="UL">
+            ${tx.home_service_ul}
+          </button>
+          <button class="user-type-btn home-user-type-btn" data-client-type="SUPPLIER">
+            ${tx.home_service_supplier}
+          </button>
+        </div>
+      </section>
     `;
   }
 
+  // Страница выбора населённого пункта
   if (CURRENT_PAGE === 'send') {
     html += `
       <h1>${tx.send_title}</h1>
@@ -157,45 +175,6 @@ function renderPage() {
     `;
   }
 
-  // Новая страница: выбор типа пользователя
-  if (CURRENT_PAGE === 'choose_user_type') {
-    if (!SELECTED_LOCATION) {
-      // если по какой-то причине зашли сюда без выбора НП — вернём на шаг выбора
-      CURRENT_PAGE = 'send';
-      renderPage();
-      return;
-    }
-
-    const chainParts = [
-      SELECTED_LOCATION.region,
-      SELECTED_LOCATION.district || SELECTED_LOCATION.okrug || '',
-      SELECTED_LOCATION.locality || ''
-    ].filter(Boolean);
-    const chain = chainParts.join(' → ');
-
-    html += `
-      <h1>${tx.user_type_title}</h1>
-      <p>${tx.user_type_desc}</p>
-
-      <section class="card">
-        <h2 class="card-title">${chain}</h2>
-        <p class="card-hint">KATO: ${SELECTED_LOCATION.kato}</p>
-
-        <div class="user-type-grid">
-          <button class="user-type-btn" data-client-type="FL">
-            ${tx.user_type_fl}
-          </button>
-          <button class="user-type-btn" data-client-type="UL">
-            ${tx.user_type_ul}
-          </button>
-          <button class="user-type-btn" data-client-type="SUPPLIER">
-            ${tx.user_type_supplier}
-          </button>
-        </div>
-      </section>
-    `;
-  }
-
   if (CURRENT_PAGE === 'about') {
     html += `<h1>${tx.about_title || ''}</h1><p>${tx.about_desc || ''}</p>`;
   }
@@ -212,16 +191,33 @@ function renderPage() {
   root.innerHTML = html;
 
   // Инициализация логики для конкретных страниц
+  if (CURRENT_PAGE === 'home') {
+    initHomePage();
+  }
   if (CURRENT_PAGE === 'send') {
     initSendPage();
-  }
-  if (CURRENT_PAGE === 'choose_user_type') {
-    initUserTypePage();
   }
 }
 
 // ===============================
-// Инициализация страницы "Көрсеткіш жіберу"
+// Главная: выбор типа сервиса
+// ===============================
+function initHomePage() {
+  const buttons = document.querySelectorAll('.home-user-type-btn');
+  if (!buttons.length) return;
+
+  buttons.forEach(btn => {
+    btn.onclick = () => {
+      CLIENT_TYPE = btn.dataset.clientType; // 'FL' | 'UL' | 'SUPPLIER'
+      // После выбора типа — сразу на шаг выбора населённого пункта
+      CURRENT_PAGE = 'send';
+      renderPage();
+    };
+  });
+}
+
+// ===============================
+// Страница "Көрсеткіш жіберу" / "Передать показания"
 // 4 уровня: регион → район → округ → НП
 // ===============================
 function initSendPage() {
@@ -315,11 +311,25 @@ function initSendPage() {
       continueBtn.disabled = !SELECTED_LOCATION;
     };
 
-    // вместо alert — переход на страницу выбора типа клиента
+    // Пока просто показываем alert — позже здесь будет следующий шаг (ЛС и т.д.)
     continueBtn.onclick = () => {
       if (!SELECTED_LOCATION) return;
-      CURRENT_PAGE = 'choose_user_type';
-      renderPage();
+
+      const chainParts = [
+        SELECTED_LOCATION.region,
+        SELECTED_LOCATION.district || SELECTED_LOCATION.okrug || '',
+        SELECTED_LOCATION.locality || ''
+      ].filter(Boolean);
+
+      const chain = chainParts.join(' → ');
+
+      const type =
+        CLIENT_TYPE === 'FL' ? 'FL' :
+        CLIENT_TYPE === 'UL' ? 'UL' :
+        CLIENT_TYPE === 'SUPPLIER' ? 'SUPPLIER' :
+        'UNKNOWN';
+
+      alert(`${chain}\nKATO: ${SELECTED_LOCATION.kato}\nCLIENT_TYPE: ${type}`);
     };
   }
 
@@ -339,7 +349,7 @@ function initSendPage() {
       if (name) okrugNames.add(name);
     });
 
-    // Если есть отдельные округа/кенттер → сначала выбираем их
+    // Если есть отдельные округа → сначала выбираем их
     if (okrugNames.size > 0) {
       okrugSelect.disabled = false;
 
@@ -424,33 +434,6 @@ function initSendPage() {
       updateOkrugAndLocalityFrom(regionRows);
     }
   };
-}
-
-// ===============================
-// Страница выбора типа пользователя
-// ===============================
-function initUserTypePage() {
-  const buttons = document.querySelectorAll('.user-type-btn');
-  if (!buttons.length) return;
-
-  buttons.forEach(btn => {
-    btn.onclick = () => {
-      CLIENT_TYPE = btn.dataset.clientType; // FL / UL / SUPPLIER
-      const tx = t();
-
-      if (CLIENT_TYPE === 'FL') {
-        alert(tx.user_type_chosen_fl);
-      } else if (CLIENT_TYPE === 'UL') {
-        alert(tx.user_type_chosen_ul);
-      } else if (CLIENT_TYPE === 'SUPPLIER') {
-        alert(tx.user_type_chosen_supplier);
-      }
-
-      // Дальше здесь будет переход:
-      // FL / UL → ввод лицевого счёта / договора
-      // SUPPLIER → форма входа по ключу
-    };
-  });
 }
 
 // ===============================
