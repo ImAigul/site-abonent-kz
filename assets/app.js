@@ -4,7 +4,6 @@
 let LANG = 'kk';          // по умолчанию казахский
 let CURRENT_PAGE = 'home';
 let SELECTED_LOCATION = null; // сюда кладём выбранный КАТО и подписи
-let SELECTED_USER_TYPE = null; // FL / UL / SUPPLIER
 
 // Простейший мок KATO для фронта (потом заменим на API)
 const KATO_MOCK = [
@@ -72,7 +71,7 @@ function renderHeader() {
         <button class="lang-btn" data-lang="ru" ${LANG === 'ru' ? 'data-active="1"' : ''}>RUS</button>
       </div>
     </div>
-  `;
+  """
 
   // Слушатели меню
   document.querySelectorAll('.nav-link').forEach(btn => {
@@ -133,6 +132,13 @@ function renderPage() {
           </div>
 
           <div class="form-field">
+            <label for="okrug-select">${tx.send_okrug_label}</label>
+            <select id="okrug-select" disabled>
+              <option value="">— ... —</option>
+            </select>
+          </div>
+
+          <div class="form-field">
             <label for="locality-select">${tx.send_locality_label}</label>
             <select id="locality-select" disabled>
               <option value="">— ... —</option>
@@ -143,50 +149,6 @@ function renderPage() {
         <div class="form-actions">
           <button id="send-location-continue" class="btn-primary" disabled>
             ${tx.send_continue_btn}
-          </button>
-        </div>
-      </section>
-    `;
-  }
-
-  if (CURRENT_PAGE === 'choose_user_type') {
-    // если по какой-то причине нет выбранного НП — откатываемся на шаг выбора НП
-    if (!SELECTED_LOCATION) {
-      CURRENT_PAGE = 'send';
-      renderPage();
-      return;
-    }
-
-    const chain =
-      `${SELECTED_LOCATION.region}` +
-      (SELECTED_LOCATION.district || SELECTED_LOCATION.okrug
-        ? ` → ${SELECTED_LOCATION.district || SELECTED_LOCATION.okrug}`
-        : '') +
-      (SELECTED_LOCATION.locality
-        ? ` → ${SELECTED_LOCATION.locality}`
-        : '');
-
-    html = `
-      <h1>${tx.send_title}</h1>
-
-      <section class="card">
-        <h2 class="card-title">${tx.send_user_type_title}</h2>
-        <p class="card-hint">${tx.send_user_type_subtitle}</p>
-
-        <p style="font-size:0.9rem; color:#4b5563; margin-bottom:12px;">
-          ${chain}<br/>
-          KATO: <strong>${SELECTED_LOCATION.kato}</strong>
-        </p>
-
-        <div class="choice-grid">
-          <button class="choice-btn" data-type="FL">
-            ${tx.send_user_type_fl}
-          </button>
-          <button class="choice-btn" data-type="UL">
-            ${tx.send_user_type_ul}
-          </button>
-          <button class="choice-btn" data-type="SUPPLIER">
-            ${tx.send_user_type_supplier}
           </button>
         </div>
       </section>
@@ -210,23 +172,20 @@ function renderPage() {
   if (CURRENT_PAGE === 'send') {
     initSendPage();
   }
-
-  if (CURRENT_PAGE === 'choose_user_type') {
-    initUserTypePage();
-  }
 }
 
 // ===============================
 // Инициализация страницы "Көрсеткіш жіберу"
-// (каскадный выбор по KATO_MOCK)
+// 4 уровня: регион → район → округ → НП
 // ===============================
 function initSendPage() {
   const regionSelect   = document.getElementById('region-select');
   const districtSelect = document.getElementById('district-select');
+  const okrugSelect    = document.getElementById('okrug-select');
   const localitySelect = document.getElementById('locality-select');
   const continueBtn    = document.getElementById('send-location-continue');
 
-  if (!regionSelect || !districtSelect || !localitySelect || !continueBtn) return;
+  if (!regionSelect || !districtSelect || !okrugSelect || !localitySelect || !continueBtn) return;
 
   const lang        = LANG;
   const regionKey   = lang === 'kk' ? 'region_kk'   : 'region_ru';
@@ -237,10 +196,12 @@ function initSendPage() {
   // Сброс состояния
   regionSelect.innerHTML   = '<option value="">— ... —</option>';
   districtSelect.innerHTML = '<option value="">— ... —</option>';
+  okrugSelect.innerHTML    = '<option value="">— ... —</option>';
   localitySelect.innerHTML = '<option value="">— ... —</option>';
 
   regionSelect.disabled   = false;
   districtSelect.disabled = true;
+  okrugSelect.disabled    = true;
   localitySelect.disabled = true;
   continueBtn.disabled    = true;
   SELECTED_LOCATION       = null;
@@ -258,86 +219,33 @@ function initSendPage() {
     regionSelect.appendChild(opt);
   });
 
-  // === 2. Обработчик выбора региона ===
-  regionSelect.onchange = () => {
-    const regionName = regionSelect.value;
-
-    districtSelect.innerHTML = '<option value="">— ... —</option>';
+  // Хелпер: заполнить НП и навесить обработчики
+  function attachLocalityHandlers(rowsBase) {
     localitySelect.innerHTML = '<option value="">— ... —</option>';
-    districtSelect.disabled  = true;
-    localitySelect.disabled  = true;
-    continueBtn.disabled     = true;
-    SELECTED_LOCATION        = null;
+    const seenLocs = new Map();
 
-    if (!regionName) return;
+    rowsBase.forEach(r => {
+      const code = r.code;
+      if (!code || seenLocs.has(code)) return;
 
-    const regionRows = KATO_MOCK.filter(r => r[regionKey] === regionName);
+      const locName =
+        r[localityKey] ||
+        r[okrugKey] ||
+        r[districtKey] ||
+        r[regionKey];
 
-    // Проверяем, есть ли "второй уровень" (район / округ)
-    const level2Names = new Set();
-    regionRows.forEach(r => {
-      const lvl2 = r[districtKey] || r[okrugKey] || '';
-      if (lvl2) level2Names.add(lvl2);
+      seenLocs.set(code, locName);
+
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = locName;
+      localitySelect.appendChild(opt);
     });
 
-    // Функция заполнения населённых пунктов
-    function fillLocalities(rows) {
-      localitySelect.innerHTML = '<option value="">— ... —</option>';
-      const seenLocs = new Map();
+    localitySelect.disabled = false;
+    continueBtn.disabled    = true;
+    SELECTED_LOCATION       = null;
 
-      rows.forEach(r => {
-        const locName =
-          r[localityKey] ||
-          r[okrugKey] ||
-          r[districtKey] ||
-          r[regionKey];
-
-        const code = r.code;
-        if (!code || seenLocs.has(code)) return;
-
-        seenLocs.set(code, locName);
-        const opt = document.createElement('option');
-        opt.value = code;
-        opt.textContent = locName;
-        localitySelect.appendChild(opt);
-      });
-
-      localitySelect.disabled = false;
-    }
-
-    // Если второго уровня нет — сразу показываем список населённых пунктов
-    if (level2Names.size === 0) {
-      fillLocalities(regionRows);
-    } else {
-      // Иначе даём выбрать район/округ
-      districtSelect.disabled = false;
-
-      level2Names.forEach(name => {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        districtSelect.appendChild(opt);
-      });
-
-      districtSelect.onchange = () => {
-        const level2 = districtSelect.value;
-        localitySelect.innerHTML = '<option value="">— ... —</option>';
-        localitySelect.disabled  = true;
-        continueBtn.disabled     = true;
-        SELECTED_LOCATION        = null;
-
-        if (!level2) return;
-
-        const rows2 = regionRows.filter(r => {
-          const lvl2 = r[districtKey] || r[okrugKey] || '';
-          return lvl2 === level2;
-        });
-
-        fillLocalities(rows2);
-      };
-    }
-
-    // Обработчик выбора населённого пункта
     localitySelect.onchange = () => {
       const kato = localitySelect.value;
       if (!kato) {
@@ -346,7 +254,7 @@ function initSendPage() {
         return;
       }
 
-      const row = KATO_MOCK.find(r => r.code === kato);
+      const row = rowsBase.find(r => r.code === kato);
 
       SELECTED_LOCATION = row
         ? {
@@ -361,42 +269,123 @@ function initSendPage() {
       continueBtn.disabled = !SELECTED_LOCATION;
     };
 
-    // Нажатие "Продолжить"
     continueBtn.onclick = () => {
       if (!SELECTED_LOCATION) return;
-      CURRENT_PAGE = 'choose_user_type';
-      renderPage();
+
+      const chainParts = [
+        SELECTED_LOCATION.region,
+        SELECTED_LOCATION.district || SELECTED_LOCATION.okrug || '',
+        SELECTED_LOCATION.locality || ''
+      ].filter(Boolean);
+
+      const chain = chainParts.join(' → ');
+
+      alert(`${chain}\nKATO: ${SELECTED_LOCATION.kato}`);
+      // дальше здесь будет переход на выбор типа клиента
     };
+  }
+
+  // Хелпер: на основе набора строк решаем — есть ли округа, и что показывать
+  function updateOkrugAndLocalityFrom(rowsBase) {
+    okrugSelect.innerHTML    = '<option value="">— ... —</option>';
+    localitySelect.innerHTML = '<option value="">— ... —</option>';
+
+    okrugSelect.disabled    = true;
+    localitySelect.disabled = true;
+    continueBtn.disabled    = true;
+    SELECTED_LOCATION       = null;
+
+    const okrugNames = new Set();
+    rowsBase.forEach(r => {
+      const name = r[okrugKey];
+      if (name) okrugNames.add(name);
+    });
+
+    // Если есть отдельные округа/кенттер → сначала выбираем их
+    if (okrugNames.size > 0) {
+      okrugSelect.disabled = false;
+
+      okrugNames.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        okrugSelect.appendChild(opt);
+      });
+
+      okrugSelect.onchange = () => {
+        const okrugName = okrugSelect.value;
+
+        localitySelect.innerHTML = '<option value="">— ... —</option>';
+        localitySelect.disabled  = true;
+        continueBtn.disabled     = true;
+        SELECTED_LOCATION        = null;
+
+        if (!okrugName) return;
+
+        const rowsForOkrug = rowsBase.filter(r => r[okrugKey] === okrugName);
+        attachLocalityHandlers(rowsForOkrug);
+      };
+    } else {
+      // Округов нет — сразу показываем список НП
+      attachLocalityHandlers(rowsBase);
+    }
+  }
+
+  // === 2. Обработчик выбора региона ===
+  regionSelect.onchange = () => {
+    const regionName = regionSelect.value;
+
+    districtSelect.innerHTML = '<option value="">— ... —</option>';
+    okrugSelect.innerHTML    = '<option value="">— ... —</option>';
+    localitySelect.innerHTML = '<option value="">— ... —</option>';
+
+    districtSelect.disabled = true;
+    okrugSelect.disabled    = true;
+    localitySelect.disabled = true;
+    continueBtn.disabled    = true;
+    SELECTED_LOCATION       = null;
+
+    if (!regionName) return;
+
+    const regionRows = KATO_MOCK.filter(r => r[regionKey] === regionName);
+
+    // Проверяем, есть ли отдельные районы
+    const districtNames = new Set();
+    regionRows.forEach(r => {
+      const name = r[districtKey];
+      if (name) districtNames.add(name);
+    });
+
+    if (districtNames.size > 0) {
+      districtSelect.disabled = false;
+
+      districtNames.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        districtSelect.appendChild(opt);
+      });
+
+      districtSelect.onchange = () => {
+        const districtName = districtSelect.value;
+
+        okrugSelect.innerHTML    = '<option value="">— ... —</option>';
+        localitySelect.innerHTML = '<option value="">— ... —</option>';
+        okrugSelect.disabled     = true;
+        localitySelect.disabled  = true;
+        continueBtn.disabled     = true;
+        SELECTED_LOCATION        = null;
+
+        if (!districtName) return;
+
+        const rowsForDistrict = regionRows.filter(r => r[districtKey] === districtName);
+        updateOkrugAndLocalityFrom(rowsForDistrict);
+      };
+    } else {
+      // Районов нет — сразу переходим к округам/НП
+      updateOkrugAndLocalityFrom(regionRows);
+    }
   };
-}
-
-// ===============================
-// Инициализация страницы выбора типа пользователя
-// ===============================
-function initUserTypePage() {
-  const buttons = document.querySelectorAll('.choice-btn');
-  if (!buttons.length) return;
-
-  buttons.forEach(btn => {
-    btn.onclick = () => {
-      const type = btn.dataset.type; // FL / UL / SUPPLIER
-      SELECTED_USER_TYPE = type;
-
-      // временно — просто показываем alert.
-      // На следующем шаге здесь сделаем переход:
-      // FL       -> страница для физлица
-      // UL       -> страница для юрлица
-      // SUPPLIER -> кабинет поставщика
-      const tx = t();
-      let typeLabel = '';
-
-      if (type === 'FL') typeLabel = tx.send_user_type_fl;
-      if (type === 'UL') typeLabel = tx.send_user_type_ul;
-      if (type === 'SUPPLIER') typeLabel = tx.send_user_type_supplier;
-
-      alert(`${typeLabel}\nKATO: ${SELECTED_LOCATION?.kato || ''}`);
-    };
-  });
 }
 
 // ===============================
