@@ -102,31 +102,31 @@ function renderPage() {
 
   let html = '<main class="site-main">';
 
-  // Главная с тремя большими кнопками
+  // --- Главная с тремя большими кнопками ---
   if (CURRENT_PAGE === 'home') {
     html += `
       <h1>${tx.home_title}</h1>
       <p>${tx.home_desc}</p>
 
       <section class="card">
-        <h2 class="card-title">${tx.home_choose_service}</h2>
+        <h2 class="card-title">${tx.home_service_title}</h2>
 
         <div class="user-type-grid">
-          <button class="user-type-btn home-user-type-btn" data-client-type="FL">
-            ${tx.home_service_fl}
+          <button class="user-type-btn" data-target="send_fl">
+            ${tx.home_btn_fl}
           </button>
-          <button class="user-type-btn home-user-type-btn" data-client-type="UL">
-            ${tx.home_service_ul}
+          <button class="user-type-btn" data-target="send_ul">
+            ${tx.home_btn_ul}
           </button>
-          <button class="user-type-btn home-user-type-btn" data-client-type="SUPPLIER">
-            ${tx.home_service_supplier}
+          <button class="user-type-btn" data-target="send_supplier">
+            ${tx.home_btn_supplier}
           </button>
         </div>
       </section>
     `;
   }
 
-  // Страница выбора населённого пункта
+  // --- Страница "Көрсеткіш жіберу / Передать показания" ---
   if (CURRENT_PAGE === 'send') {
     html += `
       <h1>${tx.send_title}</h1>
@@ -175,6 +175,7 @@ function renderPage() {
     `;
   }
 
+  // Заглушки для остальных страниц
   if (CURRENT_PAGE === 'about') {
     html += `<h1>${tx.about_title || ''}</h1><p>${tx.about_desc || ''}</p>`;
   }
@@ -200,16 +201,24 @@ function renderPage() {
 }
 
 // ===============================
-// Главная: выбор типа сервиса
+// Главная: обработчики трёх кнопок
 // ===============================
 function initHomePage() {
-  const buttons = document.querySelectorAll('.home-user-type-btn');
-  if (!buttons.length) return;
-
-  buttons.forEach(btn => {
+  const tx = t();
+  document.querySelectorAll('.user-type-btn').forEach(btn => {
     btn.onclick = () => {
-      CLIENT_TYPE = btn.dataset.clientType; // 'FL' | 'UL' | 'SUPPLIER'
-      // После выбора типа — сразу на шаг выбора населённого пункта
+      const target = btn.dataset.target;
+      if (target === 'send_fl') {
+        CLIENT_TYPE = 'FL';
+      } else if (target === 'send_ul') {
+        CLIENT_TYPE = 'UL';
+      } else if (target === 'send_supplier') {
+        CLIENT_TYPE = 'SUPPLIER';
+      } else {
+        CLIENT_TYPE = null;
+      }
+
+      // Переходим к шагу выбора населённого пункта
       CURRENT_PAGE = 'send';
       renderPage();
     };
@@ -217,7 +226,7 @@ function initHomePage() {
 }
 
 // ===============================
-// Страница "Көрсеткіш жіберу" / "Передать показания"
+// Страница "Көрсеткіш жіберу" — каскадный выбор
 // 4 уровня: регион → район → округ → НП
 // ===============================
 function initSendPage() {
@@ -311,7 +320,7 @@ function initSendPage() {
       continueBtn.disabled = !SELECTED_LOCATION;
     };
 
-    // Пока просто показываем alert — позже здесь будет следующий шаг (ЛС и т.д.)
+    // Пока по нажатию просто alert — потом тут будет шаг ввода ЛС и т.п.
     continueBtn.onclick = () => {
       if (!SELECTED_LOCATION) return;
 
@@ -320,16 +329,9 @@ function initSendPage() {
         SELECTED_LOCATION.district || SELECTED_LOCATION.okrug || '',
         SELECTED_LOCATION.locality || ''
       ].filter(Boolean);
-
       const chain = chainParts.join(' → ');
 
-      const type =
-        CLIENT_TYPE === 'FL' ? 'FL' :
-        CLIENT_TYPE === 'UL' ? 'UL' :
-        CLIENT_TYPE === 'SUPPLIER' ? 'SUPPLIER' :
-        'UNKNOWN';
-
-      alert(`${chain}\nKATO: ${SELECTED_LOCATION.kato}\nCLIENT_TYPE: ${type}`);
+      alert(`${chain}\nKATO: ${SELECTED_LOCATION.kato}\nCLIENT_TYPE: ${CLIENT_TYPE || '-'}`);
     };
   }
 
@@ -349,7 +351,7 @@ function initSendPage() {
       if (name) okrugNames.add(name);
     });
 
-    // Если есть отдельные округа → сначала выбираем их
+    // Если есть отдельные округа / кенттер → сначала выбираем их
     if (okrugNames.size > 0) {
       okrugSelect.disabled = false;
 
