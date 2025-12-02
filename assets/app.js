@@ -71,7 +71,7 @@ function renderHeader() {
         <button class="lang-btn" data-lang="ru" ${LANG === 'ru' ? 'data-active="1"' : ''}>RUS</button>
       </div>
     </div>
-  """
+  `;
 
   // Слушатели меню
   document.querySelectorAll('.nav-link').forEach(btn => {
