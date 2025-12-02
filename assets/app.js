@@ -4,6 +4,7 @@
 let LANG = 'kk';          // по умолчанию казахский
 let CURRENT_PAGE = 'home';
 let SELECTED_LOCATION = null; // сюда кладём выбранный КАТО и подписи
+let SELECTED_USER_TYPE = null; // FL / UL / SUPPLIER
 
 // Простейший мок KATO для фронта (потом заменим на API)
 const KATO_MOCK = [
@@ -95,7 +96,7 @@ function renderHeader() {
 // Рендер страниц SPA
 // ===============================
 function renderPage() {
-  const page = document.getElementById('app'); // ← всегда рендерим в #app
+  const page = document.getElementById('site-page') || document.getElementById('app');
   const tx = t();
 
   let html = '';
@@ -148,6 +149,50 @@ function renderPage() {
     `;
   }
 
+  if (CURRENT_PAGE === 'choose_user_type') {
+    // если по какой-то причине нет выбранного НП — откатываемся на шаг выбора НП
+    if (!SELECTED_LOCATION) {
+      CURRENT_PAGE = 'send';
+      renderPage();
+      return;
+    }
+
+    const chain =
+      `${SELECTED_LOCATION.region}` +
+      (SELECTED_LOCATION.district || SELECTED_LOCATION.okrug
+        ? ` → ${SELECTED_LOCATION.district || SELECTED_LOCATION.okrug}`
+        : '') +
+      (SELECTED_LOCATION.locality
+        ? ` → ${SELECTED_LOCATION.locality}`
+        : '');
+
+    html = `
+      <h1>${tx.send_title}</h1>
+
+      <section class="card">
+        <h2 class="card-title">${tx.send_user_type_title}</h2>
+        <p class="card-hint">${tx.send_user_type_subtitle}</p>
+
+        <p style="font-size:0.9rem; color:#4b5563; margin-bottom:12px;">
+          ${chain}<br/>
+          KATO: <strong>${SELECTED_LOCATION.kato}</strong>
+        </p>
+
+        <div class="choice-grid">
+          <button class="choice-btn" data-type="FL">
+            ${tx.send_user_type_fl}
+          </button>
+          <button class="choice-btn" data-type="UL">
+            ${tx.send_user_type_ul}
+          </button>
+          <button class="choice-btn" data-type="SUPPLIER">
+            ${tx.send_user_type_supplier}
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
   if (CURRENT_PAGE === 'about') {
     html = `<h1>${tx.about_title || ''}</h1><p>${tx.about_desc || ''}</p>`;
   }
@@ -164,6 +209,10 @@ function renderPage() {
 
   if (CURRENT_PAGE === 'send') {
     initSendPage();
+  }
+
+  if (CURRENT_PAGE === 'choose_user_type') {
+    initUserTypePage();
   }
 }
 
@@ -315,19 +364,39 @@ function initSendPage() {
     // Нажатие "Продолжить"
     continueBtn.onclick = () => {
       if (!SELECTED_LOCATION) return;
-
-      const chain =
-        `${SELECTED_LOCATION.region}` +
-        (SELECTED_LOCATION.district || SELECTED_LOCATION.okrug
-          ? ` → ${SELECTED_LOCATION.district || SELECTED_LOCATION.okrug}`
-          : '') +
-        (SELECTED_LOCATION.locality
-          ? ` → ${SELECTED_LOCATION.locality}`
-          : '');
-
-      alert(`${chain}\nKATO: ${SELECTED_LOCATION.kato}`);
+      CURRENT_PAGE = 'choose_user_type';
+      renderPage();
     };
   };
+}
+
+// ===============================
+// Инициализация страницы выбора типа пользователя
+// ===============================
+function initUserTypePage() {
+  const buttons = document.querySelectorAll('.choice-btn');
+  if (!buttons.length) return;
+
+  buttons.forEach(btn => {
+    btn.onclick = () => {
+      const type = btn.dataset.type; // FL / UL / SUPPLIER
+      SELECTED_USER_TYPE = type;
+
+      // временно — просто показываем alert.
+      // На следующем шаге здесь сделаем переход:
+      // FL       -> страница для физлица
+      // UL       -> страница для юрлица
+      // SUPPLIER -> кабинет поставщика
+      const tx = t();
+      let typeLabel = '';
+
+      if (type === 'FL') typeLabel = tx.send_user_type_fl;
+      if (type === 'UL') typeLabel = tx.send_user_type_ul;
+      if (type === 'SUPPLIER') typeLabel = tx.send_user_type_supplier;
+
+      alert(`${typeLabel}\nKATO: ${SELECTED_LOCATION?.kato || ''}`);
+    };
+  });
 }
 
 // ===============================
