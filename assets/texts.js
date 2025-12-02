@@ -21,15 +21,9 @@ window.TEXTS = {
     send_step_location_hint:  "",
     send_region_label:        "Облысты немесе қаланы таңдаңыз",
     send_district_label:      "Қаланы немесе ауданды таңдаңыз",
-    send_locality_label:      "Кентті немесе ауылдық округті таңдаңыз",
+    send_okrug_label:         "Ауылдық округті немесе кентті таңдаңыз",
+    send_locality_label:      "Елді мекенді таңдаңыз",
     send_continue_btn:        "Жалғастыру",
-
-    // выбор типа пользователя
-    send_user_type_title:     "Кім үшін көрсеткіш жібересіз?",
-    send_user_type_subtitle:  "Тиісті санатты таңдаңыз. Кейін бұл таңдау есептеулер мен есеп беру үшін қолданылады.",
-    send_user_type_fl:        "Жеке тұлға",
-    send_user_type_ul:        "Заңды тұлға",
-    send_user_type_supplier:  "Таратушы",
 
     // заглушки
     about_title:    "",
@@ -60,15 +54,9 @@ window.TEXTS = {
     send_step_location_hint:  "",
     send_region_label:        "Выберите область или город",
     send_district_label:      "Выберите город или район",
-    send_locality_label:      "Выберите посёлок или сельский округ",
+    send_okrug_label:         "Выберите сельский округ или посёлок",
+    send_locality_label:      "Выберите населённый пункт",
     send_continue_btn:        "Продолжить",
-
-    // выбор типа пользователя
-    send_user_type_title:     "Кому вы передаёте показания?",
-    send_user_type_subtitle:  "Выберите категорию. В дальнейшем это будет использоваться для расчётов и отчётности.",
-    send_user_type_fl:        "Физическое лицо",
-    send_user_type_ul:        "Юридическое лицо",
-    send_user_type_supplier:  "Поставщик",
 
     // заглушки
     about_title:    "",
