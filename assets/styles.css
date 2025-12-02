@@ -136,7 +136,8 @@ body {
     padding: 16px 12px 32px;
   }
 }
-/* Карточка шага */
+
+/* Карточка блока */
 .card {
   margin-top: 20px;
   background: #ffffff;
@@ -207,32 +208,33 @@ body {
 .btn-primary:enabled:hover {
   filter: brightness(1.1);
 }
-/* Выбор типа пользователя (ФЛ / ЮЛ / Поставщик) */
-.choice-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
+
+/* Главная: выбор сервиса (ФЛ / ЮЛ / Поставщик) */
+.home-service-grid {
+  margin-top: 16px;
+  display: grid;
+  gap: 10px;
 }
 
-.choice-btn {
+.home-service-btn {
   width: 100%;
   border-radius: 999px;
-  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  padding: 10px 14px;
   font-size: 0.95rem;
   text-align: left;
-  border: 1px solid #d1d5db;
-  background: #f9fafb;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-.choice-btn:hover {
-  background: #eef2ff;
-  border-color: #0b1f3b;
-  transform: translateY(-1px);
+.home-service-btn:hover {
+  background: #f3f4ff;
+  border-color: #4f46e5;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.15);
 }
-/* Кнопки типов пользователя */
+
+/* Страница выбора типа пользователя (если используем отдельным шагом) */
 .user-type-grid {
   margin-top: 16px;
   display: grid;
