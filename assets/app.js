@@ -1,7 +1,8 @@
-// Базовое состояние SPA
+// ========== БАЗОВОЕ СОСТОЯНИЕ ==========
+
 const state = {
   lang: 'ru', // 'ru' или 'kz'
-  currentPage: 'home', // 'home' | 'send' | 'about' | 'contacts' | 'faq'
+  currentPage: 'home', // 'home' | 'send' | 'about' | 'contacts' | 'faq' | ...
   clientType: null, // 'FL' | 'UL' | 'SUPPLIER'
   selectedLocation: null, // { level1, level2, level3, level4, kato }
 };
@@ -16,10 +17,10 @@ function createEmptyLocation() {
   };
 }
 
-// Моки KATO для UX выбора населённого пункта.
-// Здесь важно показать два типа веток:
+// ========== МОКИ KATO ==========
+// Пример дерева:
 // - обычная область с 4 уровнями,
-// - город республиканского значения (Астана) с районами и без сельских округов/НП.
+// - город респ. значения (Астана) с районами и без 3–4 уровня.
 
 const MOCK_KATO = [
   {
@@ -58,7 +59,7 @@ const MOCK_KATO = [
         kato: '710201000',
         nameRu: 'Алматинский район',
         nameKz: 'Алматы ауданы',
-        children: [], // здесь НЕТ сельских округов и НП
+        children: [], // нет сельских округов и НП
       },
       {
         kato: '710202000',
@@ -70,13 +71,27 @@ const MOCK_KATO = [
   },
 ];
 
-// Инициализация после загрузки DOM
+// Вспомогательные функции для KATO
+
+function findNodeByKato(nodes, kato) {
+  if (!kato) return null;
+  return (nodes || []).find((n) => n.kato === kato) || null;
+}
+
+function getDisplayName(node) {
+  if (!node) return '';
+  return state.lang === 'kz' ? node.nameKz : node.nameRu;
+}
+
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
+
 document.addEventListener('DOMContentLoaded', () => {
   initHeader();
   render();
 });
 
-// Настройка шапки: меню + языки + бургер
+// ========== ШАПКА (МЕНЮ + ЯЗЫКИ + БУРГЕР) ==========
+
 function initHeader() {
   const navButtons = document.querySelectorAll('.nav-link');
   const langButtons = document.querySelectorAll('.lang-btn');
@@ -87,6 +102,11 @@ function initHeader() {
     btn.addEventListener('click', () => {
       const page = btn.getAttribute('data-page');
       state.currentPage = page;
+
+      if (page === 'send' && !state.selectedLocation) {
+        state.selectedLocation = createEmptyLocation();
+      }
+
       render();
       closeMobileMenu();
     });
@@ -114,7 +134,8 @@ function closeMobileMenu() {
   document.body.classList.remove('menu-open');
 }
 
-// Главный рендер
+// ========== ГЛАВНЫЙ РЕНДЕР ==========
+
 function render() {
   const root = document.getElementById('app');
   if (!root) return;
@@ -147,7 +168,8 @@ function renderHeaderTexts(texts) {
   });
 }
 
-// Контент страниц
+// ========== РЕНДЕР СТРАНИЦ ==========
+
 function renderPageContent(texts) {
   switch (state.currentPage) {
     case 'home':
@@ -161,7 +183,6 @@ function renderPageContent(texts) {
     case 'faq':
       return `<div class="page-placeholder">${texts.menu.faq}</div>`;
     case 'input_account':
-      // пока отрисовываем так же, позже заменим на полноценную страницу
       return `<div class="page-placeholder">${texts.menu.send}</div>`;
     case 'ul_identify':
       return `<div class="page-placeholder">${texts.menu.send}</div>`;
@@ -195,16 +216,223 @@ function renderHome(texts) {
   `;
 }
 
+// Страница выбора населённого пункта (send)
+function renderSend(texts) {
+  if (!state.selectedLocation) {
+    state.selectedLocation = createEmptyLocation();
+  }
+  const loc = state.selectedLocation;
+
+  const level1Nodes = MOCK_KATO;
+  const level1Node = findNodeByKato(level1Nodes, loc.level1);
+
+  const level2Nodes = level1Node?.children || [];
+  const level2Node = findNodeByKato(level2Nodes, loc.level2);
+
+  const level3Nodes = level2Node?.children || [];
+  const level3Node = findNodeByKato(level3Nodes, loc.level3);
+
+  const level4Nodes = level3Node?.children || [];
+  const level4Node = findNodeByKato(level4Nodes, loc.level4);
+
+  // Листовой узел: последний выбранный уровень, у которого нет детей.
+  let leafNode = null;
+  if (level4Node) {
+    leafNode = level4Node;
+  } else if (level3Node && (!level3Node.children || level3Node.children.length === 0)) {
+    leafNode = level3Node;
+  } else if (level2Node && (!level2Node.children || level2Node.children.length === 0)) {
+    leafNode = level2Node;
+  } else if (level1Node && (!level1Node.children || level1Node.children.length === 0)) {
+    leafNode = level1Node;
+  }
+
+  const isContinueEnabled = !!leafNode;
+
+  const t = texts.send;
+
+  const renderOptions = (nodes, selectedKato) =>
+    [
+      '<option value=""></option>',
+      ...nodes.map(
+        (n) =>
+          `<option value="${n.kato}" ${
+            n.kato === selectedKato ? 'selected' : ''
+          }>${getDisplayName(n)}</option>`
+      ),
+    ].join('');
+
+  return `
+    <section class="send-layout">
+      <div class="send-grid">
+        <div class="form-field">
+          <label class="form-label">${t.level1Title}</label>
+          <select class="form-select" data-level="1">
+            ${renderOptions(level1Nodes, loc.level1)}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">${t.level2Title}</label>
+          <select class="form-select" data-level="2" ${
+            level2Nodes.length ? '' : 'disabled'
+          }>
+            ${renderOptions(level2Nodes, loc.level2)}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">${t.level3Title}</label>
+          <select class="form-select" data-level="3" ${
+            level3Nodes.length ? '' : 'disabled'
+          }>
+            ${renderOptions(level3Nodes, loc.level3)}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">${t.level4Title}</label>
+          <select class="form-select" data-level="4" ${
+            level4Nodes.length ? '' : 'disabled'
+          }>
+            ${renderOptions(level4Nodes, loc.level4)}
+          </select>
+        </div>
+      </div>
+
+      <div class="send-actions">
+        <button
+          id="send-continue-btn"
+          class="primary-btn"
+          type="button"
+          ${isContinueEnabled ? '' : 'disabled'}
+        >
+          ${t.continue}
+        </button>
+      </div>
+    </section>
+  `;
+}
+
+// ========== ОБРАБОТКА СОБЫТИЙ ==========
+
 // Делегируем клики по кнопкам главной (ФЛ / ЮЛ / Поставщик)
+// и по кнопке "Продолжить" на странице send
 document.addEventListener('click', (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
 
+  // Кнопки выбора типа клиента на главной
   const clientType = target.getAttribute('data-client-type');
-  if (!clientType) return;
+  if (clientType) {
+    state.clientType = clientType; // 'FL' | 'UL' | 'SUPPLIER'
+    state.selectedLocation = createEmptyLocation();
+    state.currentPage = 'send';
+    render();
+    closeMobileMenu();
+    return;
+  }
 
-  state.clientType = clientType; // 'FL' | 'UL' | 'SUPPLIER'
-  state.currentPage = 'send';
-  render();
-  closeMobileMenu();
+  // Кнопка "Продолжить" на странице send
+  if (target.id === 'send-continue-btn') {
+    handleSendContinue();
+    return;
+  }
 });
+
+// Изменения в селектах KATO
+document.addEventListener('change', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLSelectElement)) return;
+  if (!target.classList.contains('form-select')) return;
+
+  const levelStr = target.getAttribute('data-level');
+  const level = levelStr ? parseInt(levelStr, 10) : NaN;
+  if (!level || level < 1 || level > 4) return;
+
+  const value = target.value || null;
+  updateSelectedLocation(level, value);
+  render();
+});
+
+function updateSelectedLocation(level, kato) {
+  if (!state.selectedLocation) {
+    state.selectedLocation = createEmptyLocation();
+  }
+  const loc = state.selectedLocation;
+
+  switch (level) {
+    case 1:
+      loc.level1 = kato;
+      loc.level2 = null;
+      loc.level3 = null;
+      loc.level4 = null;
+      loc.kato = null;
+      break;
+    case 2:
+      loc.level2 = kato;
+      loc.level3 = null;
+      loc.level4 = null;
+      loc.kato = null;
+      break;
+    case 3:
+      loc.level3 = kato;
+      loc.level4 = null;
+      loc.kato = null;
+      break;
+    case 4:
+      loc.level4 = kato;
+      loc.kato = null;
+      break;
+    default:
+      break;
+  }
+}
+
+function handleSendContinue() {
+  if (!state.selectedLocation) return;
+
+  const loc = state.selectedLocation;
+
+  const level1Nodes = MOCK_KATO;
+  const level1Node = findNodeByKato(level1Nodes, loc.level1);
+
+  const level2Nodes = level1Node?.children || [];
+  const level2Node = findNodeByKato(level2Nodes, loc.level2);
+
+  const level3Nodes = level2Node?.children || [];
+  const level3Node = findNodeByKato(level3Nodes, loc.level3);
+
+  const level4Nodes = level3Node?.children || [];
+  const level4Node = findNodeByKato(level4Nodes, loc.level4);
+
+  let leafNode = null;
+  if (level4Node) {
+    leafNode = level4Node;
+  } else if (level3Node && (!level3Node.children || level3Node.children.length === 0)) {
+    leafNode = level3Node;
+  } else if (level2Node && (!level2Node.children || level2Node.children.length === 0)) {
+    leafNode = level2Node;
+  } else if (level1Node && (!level1Node.children || level1Node.children.length === 0)) {
+    leafNode = level1Node;
+  }
+
+  if (!leafNode) {
+    return;
+  }
+
+  loc.kato = leafNode.kato;
+
+  if (state.clientType === 'FL') {
+    state.currentPage = 'input_account';
+  } else if (state.clientType === 'UL') {
+    state.currentPage = 'ul_identify';
+  } else if (state.clientType === 'SUPPLIER') {
+    state.currentPage = 'supplier_auth';
+  } else {
+    // если зашли через меню без выбора типа — просто заглушка
+    state.currentPage = 'input_account';
+  }
+
+  render();
+}
