@@ -268,13 +268,13 @@ body {
   box-shadow: none;
 }
 
+/* MOBILE */
+
 @media (max-width: 768px) {
   .send-grid {
     grid-template-columns: 1fr;
   }
 }
-
-/* MOBILE */
 
 @media (max-width: 768px) {
   .header-inner {
