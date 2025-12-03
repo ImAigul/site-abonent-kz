@@ -3,7 +3,18 @@ const state = {
   lang: 'ru', // 'ru' или 'kz'
   currentPage: 'home', // 'home' | 'send' | 'about' | 'contacts' | 'faq'
   clientType: null, // 'FL' | 'UL' | 'SUPPLIER'
+  selectedLocation: null, // { level1, level2, level3, level4, kato }
 };
+
+function createEmptyLocation() {
+  return {
+    level1: null,
+    level2: null,
+    level3: null,
+    level4: null,
+    kato: null,
+  };
+}
 
 // Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', () => {
