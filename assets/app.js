@@ -15,6 +15,7 @@ function createEmptyLocation() {
     kato: null,
   };
 }
+
 // Моки KATO для UX выбора населённого пункта.
 // Здесь важно показать два типа веток:
 // - обычная область с 4 уровнями,
@@ -152,14 +153,20 @@ function renderPageContent(texts) {
     case 'home':
       return renderHome(texts);
     case 'send':
-      // На этом этапе — только заглушка с заголовком из меню.
-      return `<div class="page-placeholder">${texts.menu.send}</div>`;
+      return renderSend(texts);
     case 'about':
       return `<div class="page-placeholder">${texts.menu.about}</div>`;
     case 'contacts':
       return `<div class="page-placeholder">${texts.menu.contacts}</div>`;
     case 'faq':
       return `<div class="page-placeholder">${texts.menu.faq}</div>`;
+    case 'input_account':
+      // пока отрисовываем так же, позже заменим на полноценную страницу
+      return `<div class="page-placeholder">${texts.menu.send}</div>`;
+    case 'ul_identify':
+      return `<div class="page-placeholder">${texts.menu.send}</div>`;
+    case 'supplier_auth':
+      return `<div class="page-placeholder">${texts.menu.send}</div>`;
     default:
       return renderHome(texts);
   }
