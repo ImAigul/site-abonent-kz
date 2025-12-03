@@ -44,10 +44,10 @@ window.TEXTS = {
     identify_ul_submit_btn:          "Көрсеткіштерге өту",
 
     // страница идентификации — Поставщик
-    identify_supplier_title:         "Қолжеткізу кілтін енгізіңіз",
-    identify_supplier_desc:          "Таратушыға арналған қолжеткізу кілтін жазыңыз.",
-    identify_supplier_key_label:     "Қолжеткізу кілті",
-    identify_supplier_submit_btn:    "Кіру",
+    identify_supplier_title:      "Қолжеткізу кілтін енгізіңіз",
+    identify_supplier_desc:       "Таратушыға арналған қолжеткізу кілтін жазыңыз.",
+    identify_supplier_key_label:  "Қолжеткізу кілті",
+    identify_supplier_submit_btn: "Кіру",
 
     // общие сообщения
     identify_error_required: "Міндетті өрістерді толтырыңыз.",
@@ -104,10 +104,10 @@ window.TEXTS = {
     identify_ul_submit_btn:          "Перейти к вводу показаний",
 
     // страница идентификации — Поставщик
-    identify_supplier_title:         "Введите ключ доступа",
-    identify_supplier_desc:          "Укажите ключ доступа для поставщика.",
-    identify_supplier_key_label:     "Ключ доступа",
-    identify_supplier_submit_btn:    "Войти",
+    identify_supplier_title:      "Введите ключ доступа",
+    identify_supplier_desc:       "Укажите ключ доступа для поставщика.",
+    identify_supplier_key_label:  "Ключ доступа",
+    identify_supplier_submit_btn: "Войти",
 
     // общие сообщения
     identify_error_required: "Заполните обязательные поля.",
