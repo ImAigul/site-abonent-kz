@@ -46,7 +46,33 @@ function renderHeader() {
       </div>
     </div>
   `;
+// === РЕНДЕР ШАПКИ ===
+function renderHeader() {
+  const lang = window.CURRENT_LANG || "kk";
+  const T = window.TEXTS[lang];
 
+  const header = document.getElementById("site-header");
+  if (!header) return;
+
+  header.innerHTML = `
+    <nav class="nav">
+      <div class="nav-logo">Abonent.kz</div>
+
+      <div class="nav-menu">
+        <button class="nav-link" onclick="goHome()">${T.menu_home}</button>
+        <button class="nav-link" onclick="goSend()">${T.menu_send}</button>
+        <button class="nav-link" onclick="">${T.menu_about}</button>
+        <button class="nav-link" onclick="">${T.menu_contacts}</button>
+        <button class="nav-link" onclick="">${T.menu_help}</button>
+      </div>
+
+      <div class="nav-lang">
+        <button class="lang-btn" data-active="${lang === "kk" ? 1 : 0}" onclick="setLang('kk')">KK</button>
+        <button class="lang-btn" data-active="${lang === "ru" ? 1 : 0}" onclick="setLang('ru')">RU</button>
+      </div>
+    </nav>
+  `;
+}
   // Навигация по меню
   headerEl.querySelectorAll(".nav-link").forEach((btn) => {
     btn.addEventListener("click", () => {
