@@ -1,123 +1,432 @@
-// Двуязычные тексты для сайта
+// ===============================
+// Глобальное состояние
+// ===============================
+let LANG = 'kk';          // по умолчанию казахский
+let CURRENT_PAGE = 'home';
+let CLIENT_TYPE = null;       // FL / UL / SUPPLIER
+let SELECTED_LOCATION = null; // выбранный КАТО и подписи
 
-window.TEXTS = {
-  kk: {
-    // меню
-    menu_home:     "Басты бет",
-    menu_send:     "Көрсеткіш жіберу",
-    menu_about:    "Қызмет туралы",
-    menu_contacts: "Байланыс",
-    menu_help:     "Анықтама",
-
-    // главная
-    home_title: "Есептеу құралдарының (ЖЕҚ/ЖҮҚ) көрсеткіштерін қабылдау және өңдеуге арналған бірыңғай платформа.",
-    home_desc:  "",
-    home_service_title: "Қызметті таңдаңыз:",
-    home_btn_fl:       "Жеке тұлғалар үшін",
-    home_btn_ul:       "Заңды тұлғалар үшін",
-    home_btn_supplier: "Қызмет көрсетушілер үшін",
-
-    // страница "Көрсеткіш жіберу" — выбор НП
-    send_title: "Көрсеткіш жіберу",
-    send_desc:  "Алдымен елді мекенді таңдаңыз, содан кейін дербес шот пен қызмет түрін көрсетіңіз.",
-
-    send_step_location_title: "Елді мекенді таңдаңыз",
-    send_step_location_hint:  "",
-    send_region_label:        "Облысты немесе қаланы таңдаңыз",
-    send_district_label:      "Қаланы немесе ауданды таңдаңыз",
-    send_okrug_label:         "Ауылдық округті немесе кентті таңдаңыз",
-    send_locality_label:      "Елді мекенді таңдаңыз",
-    send_continue_btn:        "Жалғастыру",
-
-    // страница идентификации — ФЛ
-    identify_fl_title:            "Дербес шотты енгізіңіз",
-    identify_fl_desc:             "Таңдалған елді мекен бойынша дербес шот нөмірін жазыңыз.",
-    identify_fl_account_label:    "Дербес шот",
-    identify_fl_submit_btn:       "Көрсеткіштерге өту",
-
-    // страница идентификации — ЮЛ
-    identify_ul_title:               "Тіркеу деректерін енгізіңіз",
-    identify_ul_desc:                "Дербес шотты немесе шарт нөмірі мен күнін енгізіңіз.",
-    identify_ul_account_label:       "Дербес шот",
-    identify_ul_contract_label:      "Шарт нөмірі",
-    identify_ul_contract_date_label: "Шарт күні",
-    identify_ul_submit_btn:          "Көрсеткіштерге өту",
-
-    // страница идентификации — Поставщик
-    identify_supplier_title:         "Қолжеткізу кілтін енгізіңіз",
-    identify_supplier_desc:          "Таратушыға арналған қолжеткізу кілтін жазыңыз.",
-    identify_supplier_key_label:     "Қолжеткізу кілті",
-    identify_supplier_submit_btn:    "Кіру",
-
-    // общие сообщения
-    identify_error_required: "Міндетті өрістерді толтырыңыз.",
-
-    // заглушки
-    about_title:    "",
-    about_desc:     "",
-    contacts_title: "",
-    contacts_desc:  "",
-    help_title:     "",
-    help_desc:      ""
+// Простейший мок KATO для фронта (потом заменим на API)
+const KATO_MOCK = [
+  {
+    code: '710000000',
+    region_kk: 'Астана қ.',
+    region_ru: 'г.Астана',
+    district_kk: '',
+    district_ru: '',
+    okrug_kk: '',
+    okrug_ru: '',
+    locality_kk: 'Алматы ауданы',
+    locality_ru: 'район Алматы'
   },
-
-  ru: {
-    // меню
-    menu_home:     "Главная",
-    menu_send:     "Передать показания",
-    menu_about:    "О сервисе",
-    menu_contacts: "Контакты",
-    menu_help:     "Справка",
-
-    // главная
-    home_title: "Единая платформа для приёма и обработки показаний приборов учёта (ИПУ/ОДПУ).",
-    home_desc:  "",
-    home_service_title: "Выберите сервис:",
-    home_btn_fl:       "Для физических лиц",
-    home_btn_ul:       "Для юридических лиц",
-    home_btn_supplier: "Для поставщиков услуг",
-
-    // страница "Передать показания" — выбор НП
-    send_title: "Передать показания",
-    send_desc:  "Сначала выберите населённый пункт, затем введите лицевой счёт и выберите услугу для отправки показаний.",
-
-    send_step_location_title: "Выберите населённый пункт",
-    send_step_location_hint:  "",
-    send_region_label:        "Выберите область или город",
-    send_district_label:      "Выберите город или район",
-    send_okrug_label:         "Выберите сельский округ или посёлок",
-    send_locality_label:      "Выберите населённый пункт",
-    send_continue_btn:        "Продолжить",
-
-    // страница идентификации — ФЛ
-    identify_fl_title:            "Введите лицевой счёт",
-    identify_fl_desc:             "Укажите номер лицевого счёта для выбранного населённого пункта.",
-    identify_fl_account_label:    "Лицевой счёт",
-    identify_fl_submit_btn:       "Перейти к вводу показаний",
-
-    // страница идентификации — ЮЛ
-    identify_ul_title:               "Введите данные для идентификации",
-    identify_ul_desc:                "Заполните лицевой счёт или номер и дату договора.",
-    identify_ul_account_label:       "Лицевой счёт",
-    identify_ul_contract_label:      "Номер договора",
-    identify_ul_contract_date_label: "Дата договора",
-    identify_ul_submit_btn:          "Перейти к вводу показаний",
-
-    // страница идентификации — Поставщик
-    identify_supplier_title:         "Введите ключ доступа",
-    identify_supplier_desc:          "Укажите ключ доступа для поставщика.",
-    identify_supplier_key_label:     "Ключ доступа",
-    identify_supplier_submit_btn:    "Войти",
-
-    // общие сообщения
-    identify_error_required: "Заполните обязательные поля.",
-
-    // заглушки
-    about_title:    "",
-    about_desc:     "",
-    contacts_title: "",
-    contacts_desc:  "",
-    help_title:     "",
-    help_desc:      ""
+  {
+    code: '103230100',
+    region_kk: 'Абай облысы',
+    region_ru: 'область Абай',
+    district_kk: 'Абай ауданы',
+    district_ru: 'Абайский район',
+    okrug_kk: 'Қарауыл ауылдық округі',
+    okrug_ru: 'Карааульский с.о.',
+    locality_kk: 'Қарауыл ауылы',
+    locality_ru: 'с. Карааул'
+  },
+  {
+    code: '103230200',
+    region_kk: 'Абай облысы',
+    region_ru: 'область Абай',
+    district_kk: 'Абай ауданы',
+    district_ru: 'Абайский район',
+    okrug_kk: 'Қарауыл ауылдық округі',
+    okrug_ru: 'Карааульский с.о.',
+    locality_kk: 'Басқа ауыл',
+    locality_ru: 'Другое село'
   }
-};
+];
+
+// Получаем тексты для текущего языка
+function t() {
+  return window.TEXTS[LANG];
+}
+
+// ===============================
+// Рендер шапки (меню)
+// ===============================
+function renderHeader() {
+  const header = document.getElementById('site-header');
+  const tx = t();
+
+  header.className = 'site-header';
+  header.innerHTML = `
+    <div class="nav">
+      <div class="nav-logo">Abonent.kz</div>
+
+      <nav class="nav-menu">
+        <button class="nav-link" data-page="home">${tx.menu_home}</button>
+        <button class="nav-link" data-page="send">${tx.menu_send}</button>
+        <button class="nav-link" data-page="about">${tx.menu_about}</button>
+        <button class="nav-link" data-page="contacts">${tx.menu_contacts}</button>
+        <button class="nav-link" data-page="help">${tx.menu_help}</button>
+      </nav>
+
+      <div class="nav-lang">
+        <button class="lang-btn" data-lang="kk" ${LANG === 'kk' ? 'data-active="1"' : ''}>KAZ</button>
+        <button class="lang-btn" data-lang="ru" ${LANG === 'ru' ? 'data-active="1"' : ''}>RUS</button>
+      </div>
+    </div>
+  `;
+
+  // Слушатели меню
+  header.querySelectorAll('.nav-link').forEach(btn => {
+    btn.onclick = () => {
+      CURRENT_PAGE = btn.dataset.page;
+      renderPage();
+    };
+  });
+
+  // Слушатели смены языка
+  header.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.onclick = () => {
+      LANG = btn.dataset.lang;
+      renderHeader();
+      renderPage();
+    };
+  });
+}
+
+// ===============================
+// Рендер страниц SPA
+// ===============================
+function renderPage() {
+  const root = document.getElementById('site-page');
+  const tx = t();
+
+  let html = '';
+
+  // Главная
+  if (CURRENT_PAGE === 'home') {
+    html += `
+      <section>
+        <h1>${tx.home_title}</h1>
+        ${tx.home_desc ? `<p>${tx.home_desc}</p>` : ''}
+        <p style="margin-top:16px;font-weight:500;">${tx.home_service_title}</p>
+
+        <div class="home-service-grid">
+          <button class="home-service-btn" data-client-type="FL">
+            ${tx.home_btn_fl}
+          </button>
+          <button class="home-service-btn" data-client-type="UL">
+            ${tx.home_btn_ul}
+          </button>
+          <button class="home-service-btn" data-client-type="SUPPLIER">
+            ${tx.home_btn_supplier}
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
+  // Страница выбора НП
+  if (CURRENT_PAGE === 'send') {
+    html += `
+      <section>
+        <h1>${tx.send_title}</h1>
+        <p>${tx.send_desc}</p>
+
+        <section class="card">
+          <h2 class="card-title">${tx.send_step_location_title}</h2>
+          <p class="card-hint">${tx.send_step_location_hint || ''}</p>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="region-select">${tx.send_region_label}</label>
+              <select id="region-select" disabled>
+                <option value="">— ... —</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="district-select">${tx.send_district_label}</label>
+              <select id="district-select" disabled>
+                <option value="">— ... —</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="okrug-select">${tx.send_okrug_label}</label>
+              <select id="okrug-select" disabled>
+                <option value="">— ... —</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="locality-select">${tx.send_locality_label}</label>
+              <select id="locality-select" disabled>
+                <option value="">— ... —</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button id="send-location-continue" class="btn-primary" disabled>
+              ${tx.send_continue_btn}
+            </button>
+          </div>
+        </section>
+      </section>
+    `;
+  }
+
+  // Простые заглушки, чтобы не было пусто
+  if (CURRENT_PAGE === 'about') {
+    html += `<section><h1>${tx.about_title || ''}</h1><p>${tx.about_desc || ''}</p></section>`;
+  }
+
+  if (CURRENT_PAGE === 'contacts') {
+    html += `<section><h1>${tx.contacts_title || ''}</h1><p>${tx.contacts_desc || ''}</p></section>`;
+  }
+
+  if (CURRENT_PAGE === 'help') {
+    html += `<section><h1>${tx.help_title || ''}</h1><p>${tx.help_desc || ''}</p></section>`;
+  }
+
+  root.innerHTML = html;
+
+  // Инициализация логики для конкретных страниц
+  if (CURRENT_PAGE === 'home') {
+    initHomePage();
+  }
+  if (CURRENT_PAGE === 'send') {
+    initSendPage();
+  }
+}
+
+// ===============================
+// Инициализация главной страницы
+// ===============================
+function initHomePage() {
+  const buttons = document.querySelectorAll('.home-service-btn');
+  if (!buttons.length) return;
+
+  buttons.forEach(btn => {
+    btn.onclick = () => {
+      CLIENT_TYPE = btn.dataset.clientType; // FL / UL / SUPPLIER
+      CURRENT_PAGE = 'send';
+      renderPage();
+    };
+  });
+}
+
+// ===============================
+// Инициализация страницы "Көрсеткіш жіберу"
+// ===============================
+function initSendPage() {
+  const regionSelect   = document.getElementById('region-select');
+  const districtSelect = document.getElementById('district-select');
+  const okrugSelect    = document.getElementById('okrug-select');
+  const localitySelect = document.getElementById('locality-select');
+  const continueBtn    = document.getElementById('send-location-continue');
+
+  if (!regionSelect || !districtSelect || !okrugSelect || !localitySelect || !continueBtn) return;
+
+  const lang        = LANG;
+  const regionKey   = lang === 'kk' ? 'region_kk'   : 'region_ru';
+  const districtKey = lang === 'kk' ? 'district_kk' : 'district_ru';
+  const okrugKey    = lang === 'kk' ? 'okrug_kk'    : 'okrug_ru';
+  const localityKey = lang === 'kk' ? 'locality_kk' : 'locality_ru';
+
+  // Сброс состояния
+  regionSelect.innerHTML   = '<option value="">— ... —</option>';
+  districtSelect.innerHTML = '<option value="">— ... —</option>';
+  okrugSelect.innerHTML    = '<option value="">— ... —</option>';
+  localitySelect.innerHTML = '<option value="">— ... —</option>';
+
+  regionSelect.disabled   = false;
+  districtSelect.disabled = true;
+  okrugSelect.disabled    = true;
+  localitySelect.disabled = true;
+  continueBtn.disabled    = true;
+  SELECTED_LOCATION       = null;
+
+  // === 1. Наполняем список регионов ===
+  const seenRegions = new Set();
+
+  KATO_MOCK.forEach(row => {
+    const name = row[regionKey];
+    if (!name || seenRegions.has(name)) return;
+    seenRegions.add(name);
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    regionSelect.appendChild(opt);
+  });
+
+  // Хелпер: заполнить НП и навесить обработчики
+  function attachLocalityHandlers(rowsBase) {
+    localitySelect.innerHTML = '<option value="">— ... —</option>';
+    const seenLocs = new Map();
+
+    rowsBase.forEach(r => {
+      const code = r.code;
+      if (!code || seenLocs.has(code)) return;
+
+      const locName =
+        r[localityKey] ||
+        r[okrugKey] ||
+        r[districtKey] ||
+        r[regionKey];
+
+      seenLocs.set(code, locName);
+
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = locName;
+      localitySelect.appendChild(opt);
+    });
+
+    localitySelect.disabled = false;
+    continueBtn.disabled    = true;
+    SELECTED_LOCATION       = null;
+
+    localitySelect.onchange = () => {
+      const kato = localitySelect.value;
+      if (!kato) {
+        continueBtn.disabled = true;
+        SELECTED_LOCATION    = null;
+        return;
+      }
+
+      const row = rowsBase.find(r => r.code === kato);
+
+      SELECTED_LOCATION = row
+        ? {
+            kato:     row.code,
+            region:   row[regionKey],
+            district: row[districtKey] || '',
+            okrug:    row[okrugKey]    || '',
+            locality: row[localityKey] || ''
+          }
+        : null;
+
+      continueBtn.disabled = !SELECTED_LOCATION;
+    };
+
+    // Переход дальше — пока просто alert, потом привяжем API и страницы ФЛ/ЮЛ/Поставщика
+    continueBtn.onclick = () => {
+      if (!SELECTED_LOCATION) return;
+      // Здесь в дальнейшем:
+      // if (CLIENT_TYPE === 'FL') CURRENT_PAGE = 'identify_fl';
+      // ...
+      alert('Выбран КАТО: ' + SELECTED_LOCATION.kato + ' (CLIENT_TYPE: ' + CLIENT_TYPE + ')');
+    };
+  }
+
+  // Хелпер: на основе набора строк решаем — есть ли округа, и что показывать
+  function updateOkrugAndLocalityFrom(rowsBase) {
+    okrugSelect.innerHTML    = '<option value="">— ... —</option>';
+    localitySelect.innerHTML = '<option value="">— ... —</option>';
+
+    okrugSelect.disabled    = true;
+    localitySelect.disabled = true;
+    continueBtn.disabled    = true;
+    SELECTED_LOCATION       = null;
+
+    const okrugNames = new Set();
+    rowsBase.forEach(r => {
+      const name = r[okrugKey];
+      if (name) okrugNames.add(name);
+    });
+
+    // Если есть отдельные округа → сначала выбираем их
+    if (okrugNames.size > 0) {
+      okrugSelect.disabled = false;
+
+      okrugNames.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        okrugSelect.appendChild(opt);
+      });
+
+      okrugSelect.onchange = () => {
+        const okrugName = okrugSelect.value;
+
+        localitySelect.innerHTML = '<option value="">— ... —</option>';
+        localitySelect.disabled  = true;
+        continueBtn.disabled     = true;
+        SELECTED_LOCATION        = null;
+
+        if (!okrugName) return;
+
+        const rowsForOkrug = rowsBase.filter(r => r[okrugKey] === okrugName);
+        attachLocalityHandlers(rowsForOkrug);
+      };
+    } else {
+      // Округов нет — сразу показываем список НП
+      attachLocalityHandlers(rowsBase);
+    }
+  }
+
+  // === 2. Обработчик выбора региона ===
+  regionSelect.onchange = () => {
+    const regionName = regionSelect.value;
+
+    districtSelect.innerHTML = '<option value="">— ... —</option>';
+    okrugSelect.innerHTML    = '<option value="">— ... —</option>';
+    localitySelect.innerHTML = '<option value="">— ... —</option>';
+
+    districtSelect.disabled = true;
+    okrugSelect.disabled    = true;
+    localitySelect.disabled = true;
+    continueBtn.disabled    = true;
+    SELECTED_LOCATION       = null;
+
+    if (!regionName) return;
+
+    const regionRows = KATO_MOCK.filter(r => r[regionKey] === regionName);
+
+    // Проверяем, есть ли отдельные районы
+    const districtNames = new Set();
+    regionRows.forEach(r => {
+      const name = r[districtKey];
+      if (name) districtNames.add(name);
+    });
+
+    if (districtNames.size > 0) {
+      districtSelect.disabled = false;
+
+      districtNames.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        districtSelect.appendChild(opt);
+      });
+
+      districtSelect.onchange = () => {
+        const districtName = districtSelect.value;
+
+        okrugSelect.innerHTML    = '<option value="">— ... —</option>';
+        localitySelect.innerHTML = '<option value="">— ... —</option>';
+        okrugSelect.disabled     = true;
+        localitySelect.disabled  = true;
+        continueBtn.disabled     = true;
+        SELECTED_LOCATION        = null;
+
+        if (!districtName) return;
+
+        const rowsForDistrict = regionRows.filter(r => r[districtKey] === districtName);
+        updateOkrugAndLocalityFrom(rowsForDistrict);
+      };
+    } else {
+      // Районов нет — сразу переходим к округам/НП
+      updateOkrugAndLocalityFrom(regionRows);
+    }
+  };
+}
+
+// ===============================
+// Первый запуск
+// ===============================
+document.addEventListener('DOMContentLoaded', () => {
+  renderHeader();
+  renderPage();
+});
