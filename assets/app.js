@@ -1,5 +1,9 @@
 // ========== БАЗОВОЕ СОСТОЯНИЕ ==========
 
+// Базовый URL для API Worker.
+// ⚠️ Замени на фактический домен твоего воркера, если он другой.
+const API_BASE_URL = 'https://abonent-kz.alimova-aygul.workers.dev';
+
 const state = {
   lang: 'ru', // 'ru' или 'kz'
   currentPage: 'home', // 'home' | 'send' | 'about' | 'contacts' | 'faq' | ...
@@ -176,14 +180,17 @@ function renderPageContent(texts) {
       return renderHome(texts);
     case 'send':
       return renderSend(texts);
+    case 'input_account':
+      return renderInputAccount(texts);
+    case 'choose_service':
+      // пока заглушка, полноценную страницу сделаем на этапе 4
+      return `<div class="page-placeholder">${texts.menu.send}</div>`;
     case 'about':
       return `<div class="page-placeholder">${texts.menu.about}</div>`;
     case 'contacts':
       return `<div class="page-placeholder">${texts.menu.contacts}</div>`;
     case 'faq':
       return `<div class="page-placeholder">${texts.menu.faq}</div>`;
-    case 'input_account':
-      return `<div class="page-placeholder">${texts.menu.send}</div>`;
     case 'ul_identify':
       return `<div class="page-placeholder">${texts.menu.send}</div>`;
     case 'supplier_auth':
@@ -314,10 +321,40 @@ function renderSend(texts) {
   `;
 }
 
+// Страница ввода лицевого счёта (input_account)
+function renderInputAccount(texts) {
+  const t = texts.inputAccount;
+
+  return `
+    <section class="send-layout">
+      <div class="form-field">
+        <label class="form-label" for="account-input">
+          ${t.title}
+        </label>
+        <input
+          id="account-input"
+          type="text"
+          class="form-select"
+          autocomplete="off"
+        />
+        <p class="account-warning">
+          ${t.warning}
+        </p>
+        <p class="account-error" id="account-error" style="display:none;"></p>
+      </div>
+      <div class="send-actions">
+        <button type="button" class="primary-btn" id="account-check-btn">
+          ${t.button}
+        </button>
+      </div>
+    </section>
+  `;
+}
+
 // ========== ОБРАБОТКА СОБЫТИЙ ==========
 
-// Делегируем клики по кнопкам главной (ФЛ / ЮЛ / Поставщик)
-// и по кнопке "Продолжить" на странице send
+// Делегируем клики по кнопкам главной (ФЛ / ЮЛ / Поставщик),
+// по кнопке "Продолжить" и по кнопке "Проверить" ЛС
 document.addEventListener('click', (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
@@ -336,6 +373,12 @@ document.addEventListener('click', (event) => {
   // Кнопка "Продолжить" на странице send
   if (target.id === 'send-continue-btn') {
     handleSendContinue();
+    return;
+  }
+
+  // Кнопка "Проверить / Тексеру" на странице input_account
+  if (target.id === 'account-check-btn') {
+    handleAccountCheck();
     return;
   }
 });
@@ -435,4 +478,66 @@ function handleSendContinue() {
   }
 
   render();
+}
+
+// Вызов /api/check-account для ФЛ (и дальше для UL можно будет переиспользовать)
+async function handleAccountCheck() {
+  const input = document.getElementById('account-input');
+  const errorEl = document.getElementById('account-error');
+  if (!input || !errorEl) return;
+
+  const account = input.value.trim();
+  const currentTexts = ABONENT_TEXTS[state.lang] || ABONENT_TEXTS.ru;
+  const t = currentTexts.inputAccount;
+
+  // Скрываем старую ошибку
+  errorEl.style.display = 'none';
+  errorEl.textContent = '';
+
+  if (!account) {
+    // пустой ввод — просто не дергаем API
+    return;
+  }
+
+  const kato = state.selectedLocation?.kato || null;
+  if (!kato) {
+    // на всякий случай: без КАТО смысла нет
+    console.warn('KATO не выбран, запрос /api/check-account не отправляем');
+    return;
+  }
+
+  const clientType = state.clientType || 'FL';
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/check-account`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        account,
+        kato,
+        clientType,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Ошибка HTTP при запросе /api/check-account', response.status);
+      return;
+    }
+
+    const data = await response.json();
+
+    if (data && data.found) {
+      // успех → идём на выбор услуги (этап 4)
+      state.currentPage = 'choose_service';
+      render();
+    } else {
+      // не найден → показываем текст из ТЗ
+      errorEl.textContent = t.errorNotFound;
+      errorEl.style.display = 'block';
+    }
+  } catch (err) {
+    console.error('Сетевая ошибка при запросе /api/check-account', err);
+  }
 }
