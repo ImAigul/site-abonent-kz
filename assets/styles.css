@@ -197,6 +197,83 @@ body {
   font-weight: 500;
 }
 
+/* Страница выбора населённого пункта (send) */
+
+.send-layout {
+  max-width: 800px;
+  margin: 2.5rem auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.send-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.form-label {
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+.form-select {
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  font-size: 0.95rem;
+  background: #ffffff;
+}
+
+.form-select:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.send-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.primary-btn {
+  padding: 0.7rem 1.4rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: var(--color-primary);
+  color: var(--color-button-text);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.25);
+  transition: transform 0.08s ease-out, box-shadow 0.08s ease-out,
+    background 0.12s ease-out;
+}
+
+.primary-btn:hover:enabled {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(15, 23, 42, 0.3);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .send-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* MOBILE */
 
 @media (max-width: 768px) {
