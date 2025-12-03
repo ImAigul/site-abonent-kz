@@ -1,265 +1,333 @@
+// Простое состояние приложения
+const AppState = {
+  lang: "kk",          // "kk" или "ru"
+  page: "home",        // "home" | "send" | "input_account"
+  clientType: null,    // "FL" | "UL" | "SUPPLIER"
+  locationSelected: false
+};
 
-
-
-/* Сброс базовый */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+// Удобный доступ к текстам
+function t(key) {
+  const dict = window.TEXTS?.[AppState.lang] || {};
+  return dict[key] || key;
 }
 
-html, body {
-  height: 100%;
+// Инициализация
+document.addEventListener("DOMContentLoaded", () => {
+  renderHeader();
+  renderMain();
+});
+
+/* ------------ РЕНДЕР ШАПКИ / МЕНЮ ------------ */
+
+function renderHeader() {
+  const headerEl = document.getElementById("site-header");
+  if (!headerEl) return;
+
+  headerEl.innerHTML = `
+    <div class="nav">
+      <div class="nav-logo">ABONENT.KZ</div>
+
+      <nav class="nav-menu">
+        <button class="nav-link" data-page="home">${t("menu_home")}</button>
+        <button class="nav-link" data-page="send">${t("menu_send")}</button>
+        <button class="nav-link" data-page="about">${t("menu_about")}</button>
+        <button class="nav-link" data-page="contacts">${t("menu_contacts")}</button>
+        <button class="nav-link" data-page="help">${t("menu_help")}</button>
+      </nav>
+
+      <div class="nav-lang">
+        <button class="lang-btn" data-lang="kk" data-active="${AppState.lang === "kk" ? "1" : "0"}">KZ</button>
+        <button class="lang-btn" data-lang="ru" data-active="${AppState.lang === "ru" ? "1" : "0"}">RU</button>
+      </div>
+    </div>
+  `;
+
+  // Навигация по пунктам меню
+  headerEl.querySelectorAll(".nav-link").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const page = btn.getAttribute("data-page");
+      if (!page) return;
+
+      if (page === "home") {
+        AppState.page = "home";
+      } else if (page === "send") {
+        AppState.page = "home"; // сначала на главную, оттуда выбор сервиса
+      } else {
+        // пока заглушки
+        AppState.page = "stub_" + page;
+      }
+      renderMain();
+      renderHeader(); // чтобы обновить выделение языка/подписи, если надо
+    });
+  });
+
+  // Переключение языка
+  headerEl.querySelectorAll(".lang-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const lang = btn.getAttribute("data-lang");
+      if (!lang || (lang !== "kk" && lang !== "ru")) return;
+      AppState.lang = lang;
+      // перерисовать и шапку, и контент
+      renderHeader();
+      renderMain();
+    });
+  });
 }
 
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f5f7fb;
-  color: #111827;
-}
+/* ------------ РЕНДЕР ОСНОВНОГО КОНТЕНТА ------------ */
 
-/* Контейнер приложения */
-#app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+function renderMain() {
+  const appEl = document.getElementById("app");
+  if (!appEl) return;
 
-/* Шапка / меню */
-.site-header {
-  background: #0b1f3b; /* тёмно-синий */
-  color: #e5e7eb;
-  padding: 10px 20px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.nav-logo {
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: #ffffff;
-}
-
-/* Меню */
-.nav-menu {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.nav-link {
-  border: none;
-  background: transparent;
-  color: #e5e7eb;
-  padding: 6px 12px;
-  border-radius: 999px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.nav-link:hover {
-  background: rgba(255,255,255,0.12);
-  color: #ffffff;
-}
-
-/* Переключатель языков */
-.nav-lang {
-  display: flex;
-  gap: 6px;
-}
-
-.lang-btn {
-  border: 1px solid rgba(229,231,235,0.6);
-  background: transparent;
-  color: #e5e7eb;
-  padding: 4px 10px;
-  border-radius: 999px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-.lang-btn[data-active="1"] {
-  background: #ffffff;
-  color: #0b1f3b;
-  border-color: #ffffff;
-}
-
-.lang-btn:hover {
-  background: rgba(255,255,255,0.9);
-  color: #0b1f3b;
-}
-
-/* Контент */
-.site-main {
-  flex: 1;
-  padding: 24px 16px 40px;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.site-main h1 {
-  font-size: 1.6rem;
-  margin-bottom: 12px;
-  color: #111827;
-}
-
-.site-main p {
-  font-size: 0.98rem;
-  line-height: 1.5;
-  color: #4b5563;
-}
-
-/* Простая адаптивность */
-@media (max-width: 768px) {
-  .nav {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .nav-menu {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .site-main {
-    padding: 16px 12px 32px;
+  // Переключение между страницами
+  if (AppState.page === "home") {
+    renderHome(appEl);
+  } else if (AppState.page === "send") {
+    renderSend(appEl);
+  } else if (AppState.page === "input_account") {
+    renderInputAccount(appEl);
+  } else {
+    renderStub(appEl);
   }
 }
 
-/* Карточка блока */
-.card {
-  margin-top: 20px;
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 16px 18px;
-  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.05);
+/* ------------ ГЛАВНАЯ: 3 БОЛЬШИЕ КНОПКИ ------------ */
+
+function renderHome(container) {
+  container.innerHTML = `
+    <section class="card">
+      <h1>${t("home_title")}</h1>
+      ${t("home_desc") ? `<p>${t("home_desc")}</p>` : ""}
+      <p style="margin-top: 12px; font-weight: 500;">${t("home_service_title")}</p>
+
+      <div class="home-service-grid">
+        <button class="home-service-btn" data-client-type="FL">
+          ${t("home_btn_fl")}
+        </button>
+        <button class="home-service-btn" data-client-type="UL">
+          ${t("home_btn_ul")}
+        </button>
+        <button class="home-service-btn" data-client-type="SUPPLIER">
+          ${t("home_btn_supplier")}
+        </button>
+      </div>
+    </section>
+  `;
+
+  // Обработчики выбора типа пользователя
+  container.querySelectorAll(".home-service-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const type = btn.getAttribute("data-client-type");
+      AppState.clientType = type;
+      AppState.page = "send";
+      AppState.locationSelected = false;
+      renderMain();
+    });
+  });
 }
 
-.card-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: #111827;
+/* ------------ СТРАНИЦА ВЫБОРА НАСЕЛЁННОГО ПУНКТА ------------ */
+
+function renderSend(container) {
+  // Простейший мок для цепочки (для демо)
+  // В будущем сюда придёт реальный КАТО
+  container.innerHTML = `
+    <section class="card">
+      <h1>${t("send_title")}</h1>
+      ${t("send_desc") ? `<p class="card-hint">${t("send_desc")}</p>` : ""}
+
+      <div class="form-grid" id="location-form">
+        <div class="form-field">
+          <label for="region-select">${t("send_region_label")}</label>
+          <select id="region-select">
+            <option value="">—</option>
+            <option value="astana">Астана</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="district-select">${t("send_district_label")}</label>
+          <select id="district-select" disabled>
+            <option value="">—</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="okrug-select">${t("send_okrug_label")}</label>
+          <select id="okrug-select" disabled>
+            <option value="">—</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="locality-select">${t("send_locality_label")}</label>
+          <select id="locality-select" disabled>
+            <option value="">—</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button id="btn-send-continue" class="btn-primary" disabled>
+          ${t("send_continue_btn")}
+        </button>
+      </div>
+    </section>
+  `;
+
+  const regionSel   = container.querySelector("#region-select");
+  const districtSel = container.querySelector("#district-select");
+  const okrugSel    = container.querySelector("#okrug-select");
+  const localitySel = container.querySelector("#locality-select");
+  const continueBtn = container.querySelector("#btn-send-continue");
+
+  // step 1: выбран регион
+  regionSel.addEventListener("change", () => {
+    const val = regionSel.value;
+    if (!val) {
+      districtSel.disabled = true;
+      okrugSel.disabled = true;
+      localitySel.disabled = true;
+      continueBtn.disabled = true;
+      return;
+    }
+
+    // Моки для района
+    districtSel.innerHTML = `
+      <option value="">—</option>
+      <option value="esil">Есиль</option>
+    `;
+    districtSel.disabled = false;
+    okrugSel.disabled = true;
+    localitySel.disabled = true;
+    continueBtn.disabled = true;
+  });
+
+  // step 2: выбран район
+  districtSel.addEventListener("change", () => {
+    const val = districtSel.value;
+    if (!val) {
+      okrugSel.disabled = true;
+      localitySel.disabled = true;
+      continueBtn.disabled = true;
+      return;
+    }
+
+    okrugSel.innerHTML = `
+      <option value="">—</option>
+      <option value="okrug1">Округ 1</option>
+    `;
+    okrugSel.disabled = false;
+    localitySel.disabled = true;
+    continueBtn.disabled = true;
+  });
+
+  // step 3: выбран округ
+  okrugSel.addEventListener("change", () => {
+    const val = okrugSel.value;
+    if (!val) {
+      localitySel.disabled = true;
+      continueBtn.disabled = true;
+      return;
+    }
+
+    localitySel.innerHTML = `
+      <option value="">—</option>
+      <option value="np1">Населённый пункт 1</option>
+    `;
+    localitySel.disabled = false;
+    continueBtn.disabled = true;
+  });
+
+  // step 4: выбран конечный НП
+  localitySel.addEventListener("change", () => {
+    const val = localitySel.value;
+    continueBtn.disabled = !val;
+    AppState.locationSelected = !!val;
+  });
+
+  // Кнопка "Продолжить"
+  continueBtn.addEventListener("click", () => {
+    if (!AppState.locationSelected) return;
+    AppState.page = "input_account";
+    renderMain();
+  });
 }
 
-.card-hint {
-  font-size: 0.9rem;
-  color: #6b7280;
-  margin-bottom: 16px;
+/* ------------ СТРАНИЦА ВВОДА ЛИЦЕВОГО СЧЁТА ------------ */
+
+function renderInputAccount(container) {
+  container.innerHTML = `
+    <section class="card">
+      <h1>${t("identify_fl_title")}</h1>
+      ${t("identify_fl_desc") ? `<p class="card-hint">${t("identify_fl_desc")}</p>` : ""}
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="account-input">${t("identify_fl_account_label")}</label>
+          <input id="account-input" type="text" placeholder="" style="
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            background: #f9fafb;
+            font-size: 0.95rem;
+            color: #111827;
+          " />
+        </div>
+
+        <p style="font-size: 0.85rem; color: #b91c1c; font-style: italic;">
+          ${AppState.lang === "ru"
+            ? "Внимание! Показания принимаются с 15 по 31 число каждого месяца."
+            : "Назар аударыңыз! Көрсеткіштер әр айдың 15-і мен 31-і аралығында қабылданады."}
+        </p>
+      </div>
+
+      <div class="form-actions">
+        <button id="btn-account-check" class="btn-primary" disabled>
+          ${t("identify_fl_submit_btn")}
+        </button>
+      </div>
+    </section>
+  `;
+
+  const inputEl = container.querySelector("#account-input");
+  const btnEl   = container.querySelector("#btn-account-check");
+
+  inputEl.addEventListener("input", () => {
+    btnEl.disabled = !inputEl.value.trim();
+  });
+
+  btnEl.addEventListener("click", () => {
+    const acc = inputEl.value.trim();
+    if (!acc) return;
+
+    // Здесь позже добавим реальный запрос к /api/check-account
+    // Пока просто переходим дальше или показываем alert для теста.
+    alert(
+      AppState.lang === "ru"
+        ? `Проверка ЛС "${acc}" (демо).`
+        : `Дербес шот "${acc}" тексерілуде (демо).`
+    );
+  });
 }
 
-/* Формы выбора */
-.form-grid {
-  display: grid;
-  gap: 12px;
+/* ------------ Заглушки для about / contacts / help ------------ */
+
+function renderStub(container) {
+  const pageKey = AppState.page.replace("stub_", "");
+  const titleKey = pageKey + "_title";
+  const descKey  = pageKey + "_desc";
+
+  container.innerHTML = `
+    <section class="card">
+      <h1>${t(titleKey) || ""}</h1>
+      <p class="card-hint">${t(descKey) || ""}</p>
+      <p style="font-size:0.9rem;color:#6b7280;margin-top:12px;">
+        Раздел находится в разработке.
+      </p>
+    </section>
+  `;
 }
-
-.form-field label {
-  display: block;
-  font-size: 0.85rem;
-  color: #4b5563;
-  margin-bottom: 4px;
-}
-
-.form-field select {
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: #f9fafb;
-  font-size: 0.95rem;
-  color: #111827;
-}
-
-/* Кнопка продолжения */
-.form-actions {
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.btn-primary {
-  border: none;
-  border-radius: 999px;
-  padding: 8px 18px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  background: #0b1f3b;
-  color: #ffffff;
-  opacity: 0.5; /* пока disabled */
-}
-
-.btn-primary:enabled {
-  opacity: 1;
-}
-
-.btn-primary:enabled:hover {
-  filter: brightness(1.1);
-}
-
-/* Главная: выбор сервиса (ФЛ / ЮЛ / Поставщик) */
-.home-service-grid {
-  margin-top: 16px;
-  display: grid;
-  gap: 10px;
-}
-
-.home-service-btn {
-  width: 100%;
-  border-radius: 999px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  padding: 10px 14px;
-  font-size: 0.95rem;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-.home-service-btn:hover {
-  background: #f3f4ff;
-  border-color: #4f46e5;
-  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.15);
-}
-
-/* Страница выбора типа пользователя (если используем отдельным шагом) */
-.user-type-grid {
-  margin-top: 16px;
-  display: grid;
-  gap: 10px;
-}
-
-.user-type-btn {
-  width: 100%;
-  border-radius: 999px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  padding: 10px 14px;
-  font-size: 0.95rem;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-.user-type-btn:hover {
-  background: #f3f4ff;
-  border-color: #4f46e5;
-  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.15);
-}
-
-
