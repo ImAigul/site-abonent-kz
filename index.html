@@ -1,18 +1,32 @@
 <!DOCTYPE html>
-<html lang="kk">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Abonent.kz</title>
-  <link rel="stylesheet" href="assets/styles.css?v=5" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
-  <header id="site-header" class="site-header"></header>
-  <main class="site-shell">
-    <div id="app" class="site-main"></div>
-  </main>
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <div class="logo">Abonent.kz</div>
+      <nav class="main-menu" id="main-menu">
+        <!-- меню будет рендериться через JS -->
+      </nav>
+    </div>
+    <div class="top-bar-right">
+      <button class="lang-switch" data-lang="kz">Қаз</button>
+      <button class="lang-switch" data-lang="ru">Рус</button>
+    </div>
+  </header>
 
-  <script src="assets/texts.js?v=5"></script>
-  <script src="assets/app.js?v=5"></script>
+  <main id="app"></main>
+
+  <footer class="footer">
+    <span>&copy; Abonent.kz</span>
+  </footer>
+
+  <script src="assets/texts.js"></script>
+  <script src="assets/app.js"></script>
 </body>
 </html>
