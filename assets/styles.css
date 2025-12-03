@@ -1,1 +1,227 @@
+:root {
+  --color-header-bg: #0b1f3b;
+  --color-header-text: #ffffff;
+  --color-header-text-muted: #e0e6f0;
+  --color-body-bg: #f5f7fb;
+  --color-primary: #0b1f3b;
+  --color-primary-hover: #123366;
+  --color-button-text: #ffffff;
+}
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  background: var(--color-body-bg);
+  color: #111827;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* HEADER */
+
+.site-header {
+  background: var(--color-header-bg);
+  color: var(--color-header-text);
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 1.25rem;
+  white-space: nowrap;
+}
+
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  justify-content: center;
+}
+
+.nav-link {
+  border: none;
+  background: transparent;
+  color: var(--color-header-text-muted);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--color-header-text);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lang-switch {
+  display: inline-flex;
+  background: rgba(15, 23, 42, 0.35);
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.lang-btn {
+  border: none;
+  background: transparent;
+  color: var(--color-header-text-muted);
+  padding: 0.2rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+.lang-btn.active {
+  background: #ffffff;
+  color: var(--color-header-bg);
+}
+
+/* BURGER (мобильное меню) */
+
+.burger {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0.25rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.burger span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--color-header-text);
+  border-radius: 999px;
+}
+
+/* MAIN CONTENT */
+
+#app {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+/* Главная страница */
+
+.home-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.home-intro {
+  max-width: 640px;
+  font-size: 1.2rem;
+  line-height: 1.5;
+}
+
+.home-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 360px;
+}
+
+.home-btn {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  background: var(--color-primary);
+  color: var(--color-button-text);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.25);
+  transition: transform 0.08s ease-out, box-shadow 0.08s ease-out,
+    background 0.12s ease-out;
+}
+
+.home-btn:hover {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.3);
+}
+
+.home-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.25);
+}
+
+/* Общий стиль заглушек для внутренних страниц */
+
+.page-placeholder {
+  max-width: 640px;
+  margin: 2.5rem auto 0;
+  font-size: 1.4rem;
+  font-weight: 500;
+}
+
+/* MOBILE */
+
+@media (max-width: 768px) {
+  .header-inner {
+    padding-inline: 0.75rem;
+  }
+
+  .main-nav {
+    position: absolute;
+    inset-inline: 0;
+    top: 56px;
+    background: var(--color-header-bg);
+    padding: 0.5rem 0.75rem 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    display: none;
+    z-index: 20;
+  }
+
+  body.menu-open #main-nav {
+    display: flex;
+  }
+
+  .burger {
+    display: inline-flex;
+  }
+}
