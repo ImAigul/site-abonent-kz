@@ -541,3 +541,36 @@ async function handleAccountCheck() {
     console.error('Сетевая ошибка при запросе /api/check-account', err);
   }
 }
+// ========== INPUT ACCOUNT PAGE ==========
+function renderInputAccount(texts) {
+  const t = texts.input_account || {
+    title: (state.lang === 'kz')
+      ? 'Жеке есептік нөмірді енгізіңіз'
+      : 'Введите лицевой счёт',
+    placeholder: (state.lang === 'kz')
+      ? 'Лицевой счёт'
+      : 'Лицевой счёт',
+    warning: (state.lang === 'kz')
+      ? 'Назар аударыңыз: есептік нөмірді дұрыс енгізіңіз.'
+      : 'Важно: введите корректный лицевой счёт.',
+    button: (state.lang === 'kz')
+      ? 'Тексеру'
+      : 'Проверить',
+  };
+
+  return `
+    <section class="input-account-layout">
+      <div class="form-field">
+        <label class="form-label">${t.title}</label>
+        <input id="account-input" class="form-input" type="text" placeholder="${t.placeholder}">
+        <div class="form-warning">${t.warning}</div>
+      </div>
+
+      <div class="send-actions">
+        <button id="check-account-btn" class="primary-btn" type="button">
+          ${t.button}
+        </button>
+      </div>
+    </section>
+  `;
+}
