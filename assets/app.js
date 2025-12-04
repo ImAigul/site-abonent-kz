@@ -4,10 +4,10 @@
 const API_BASE_URL = 'https://abonent-kz.alimova-aygul.workers.dev';
 
 const state = {
-  lang: 'ru',
-  currentPage: 'home',
-  clientType: null,
-  selectedLocation: null,
+  lang: 'ru', // 'ru' или 'kz'
+  currentPage: 'home', // 'home' | 'send' | 'about' | 'contacts' | 'faq' | ...
+  clientType: null, // 'FL' | 'UL' | 'SUPPLIER'
+  selectedLocation: null, // { level1, level2, level3, level4, kato }
 };
 
 function createEmptyLocation() {
@@ -21,6 +21,7 @@ function createEmptyLocation() {
 }
 
 // ========== МОКИ KATO ==========
+
 const MOCK_KATO = [
   {
     kato: '710000000',
@@ -70,12 +71,15 @@ const MOCK_KATO = [
   },
 ];
 
+// Вспомогательные функции для KATO
+
 function findNodeByKato(nodes, kato) {
   if (!kato) return null;
   return (nodes || []).find((n) => n.kato === kato) || null;
 }
 
 function getDisplayName(node) {
+  if (!node) return '';
   return state.lang === 'kz' ? node.nameKz : node.nameRu;
 }
 
@@ -86,13 +90,14 @@ document.addEventListener('DOMContentLoaded', () => {
   render();
 });
 
-// ========== ШАПКА ==========
+// ========== ШАПКА (МЕНЮ + ЯЗЫКИ + БУРГЕР) ==========
 
 function initHeader() {
   const navButtons = document.querySelectorAll('.nav-link');
   const langButtons = document.querySelectorAll('.lang-btn');
   const burger = document.getElementById('burger');
 
+  // Навигация по меню
   navButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
       const page = btn.getAttribute('data-page');
@@ -107,6 +112,7 @@ function initHeader() {
     });
   });
 
+  // Переключение языка
   langButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
       const lang = btn.getAttribute('data-lang');
@@ -116,6 +122,7 @@ function initHeader() {
     });
   });
 
+  // Бургер-меню
   if (burger) {
     burger.addEventListener('click', () => {
       document.body.classList.toggle('menu-open');
@@ -127,18 +134,21 @@ function closeMobileMenu() {
   document.body.classList.remove('menu-open');
 }
 
-// ========== РЕНДЕР ==========
+// ========== ГЛАВНЫЙ РЕНДЕР ==========
 
 function render() {
   const root = document.getElementById('app');
+  if (!root) return;
+
   const texts = ABONENT_TEXTS[state.lang] || ABONENT_TEXTS.ru;
 
   renderHeaderTexts(texts);
   root.innerHTML = renderPageContent(texts);
 }
 
+// Обновляем подписи в шапке (меню + активный язык)
 function renderHeaderTexts(texts) {
-  const map = {
+  const navMap = {
     home: texts.menu.home,
     send: texts.menu.send,
     about: texts.menu.about,
@@ -148,16 +158,17 @@ function renderHeaderTexts(texts) {
 
   document.querySelectorAll('.nav-link').forEach((btn) => {
     const page = btn.getAttribute('data-page');
-    btn.textContent = map[page] || '';
+    btn.textContent = navMap[page] || '';
     btn.classList.toggle('active', state.currentPage === page);
   });
 
   document.querySelectorAll('.lang-btn').forEach((btn) => {
-    btn.classList.toggle('active', state.lang === btn.getAttribute('data-lang'));
+    const lang = btn.getAttribute('data-lang');
+    btn.classList.toggle('active', state.lang === lang);
   });
 }
 
-// ========== СТРАНИЦЫ ==========
+// ========== РЕНДЕР СТРАНИЦ ==========
 
 function renderPageContent(texts) {
   switch (state.currentPage) {
@@ -168,6 +179,7 @@ function renderPageContent(texts) {
     case 'input_account':
       return renderInputAccount(texts);
     case 'choose_service':
+      // пока заглушка, полноценную страницу сделаем на этапе 4
       return `<div class="page-placeholder">${texts.menu.send}</div>`;
     case 'about':
       return `<div class="page-placeholder">${texts.menu.about}</div>`;
@@ -184,27 +196,34 @@ function renderPageContent(texts) {
   }
 }
 
-// ---- HOME ----
-
+// Главная страница с тремя вертикальными кнопками
 function renderHome(texts) {
-  const b = texts.home.buttons;
-
+  const btns = texts.home.buttons;
   return `
     <section class="home-layout">
-      <div class="home-intro">${texts.home.intro}</div>
+      <div class="home-intro">
+        ${texts.home.intro}
+      </div>
       <div class="home-buttons">
-        <button class="home-btn" data-client-type="FL">${b.fl}</button>
-        <button class="home-btn" data-client-type="UL">${b.ul}</button>
-        <button class="home-btn" data-client-type="SUPPLIER">${b.supplier}</button>
+        <button class="home-btn" data-client-type="FL" type="button">
+          ${btns.fl}
+        </button>
+        <button class="home-btn" data-client-type="UL" type="button">
+          ${btns.ul}
+        </button>
+        <button class="home-btn" data-client-type="SUPPLIER" type="button">
+          ${btns.supplier}
+        </button>
       </div>
     </section>
   `;
 }
 
-// ---- SEND ----
-
+// Страница выбора населённого пункта (send)
 function renderSend(texts) {
-  if (!state.selectedLocation) state.selectedLocation = createEmptyLocation();
+  if (!state.selectedLocation) {
+    state.selectedLocation = createEmptyLocation();
+  }
   const loc = state.selectedLocation;
 
   const level1Nodes = MOCK_KATO;
@@ -219,25 +238,32 @@ function renderSend(texts) {
   const level4Nodes = level3Node?.children || [];
   const level4Node = findNodeByKato(level4Nodes, loc.level4);
 
+  // Листовой узел: последний выбранный уровень, у которого нет детей.
   let leafNode = null;
-  if (level4Node) leafNode = level4Node;
-  else if (level3Node && level3Nodes.length === 0) leafNode = level3Node;
-  else if (level2Node && level2Nodes.length === 0) leafNode = level2Node;
-  else if (level1Node && level1Nodes.length === 0) leafNode = level1Node;
+  if (level4Node) {
+    leafNode = level4Node;
+  } else if (level3Node && (!level3Node.children || level3Node.children.length === 0)) {
+    leafNode = level3Node;
+  } else if (level2Node && (!level2Node.children || level2Node.children.length === 0)) {
+    leafNode = level2Node;
+  } else if (level1Node && (!level1Node.children || level1Node.children.length === 0)) {
+    leafNode = level1Node;
+  }
 
   const isContinueEnabled = !!leafNode;
+
   const t = texts.send;
 
-  const renderOptions = (nodes, selected) =>
-    `<option value=""></option>` +
-    nodes
-      .map(
+  const renderOptions = (nodes, selectedKato) =>
+    [
+      '<option value=""></option>',
+      ...nodes.map(
         (n) =>
           `<option value="${n.kato}" ${
-            n.kato === selected ? 'selected' : ''
+            n.kato === selectedKato ? 'selected' : ''
           }>${getDisplayName(n)}</option>`
-      )
-      .join('');
+      ),
+    ].join('');
 
   return `
     <section class="send-layout">
@@ -278,9 +304,12 @@ function renderSend(texts) {
       </div>
 
       <div class="send-actions">
-        <button id="send-continue-btn" class="primary-btn" ${
-          isContinueEnabled ? '' : 'disabled'
-        }>
+        <button
+          id="send-continue-btn"
+          class="primary-btn"
+          type="button"
+          ${isContinueEnabled ? '' : 'disabled'}
+        >
           ${t.continue}
         </button>
       </div>
@@ -288,149 +317,247 @@ function renderSend(texts) {
   `;
 }
 
-// ---- INPUT ACCOUNT ----
-
+// Страница ввода лицевого счёта (input_account)
 function renderInputAccount(texts) {
-  const t = texts.inputAccount;
+  const t = texts.inputAccount || {
+    title:
+      state.lang === 'kz'
+        ? 'Жеке есептік нөмірді енгізіңіз'
+        : 'Введите лицевой счёт',
+    placeholder:
+      state.lang === 'kz'
+        ? 'Лицевой счёт'
+        : 'Лицевой счёт',
+    warning:
+      state.lang === 'kz'
+        ? 'Маңызды: есептеуіштердің көрсеткіштері әр айдың 15-інен 31-іне дейін қабылданады.'
+        : 'Важно: показания принимаются с 15 по 31 число текущего расчётного периода.',
+    button: state.lang === 'kz' ? 'Тексеру' : 'Проверить',
+    errorNotFound:
+      state.lang === 'kz'
+        ? 'Есептік нөмір табылмады. Нөмірді тексеріңіз немесе қызмет көрсетушіге жүгініңіз.'
+        : 'Лицевой счёт не найден. Проверьте номер или обратитесь к поставщику услуг.',
+  };
 
   return `
     <section class="send-layout">
       <div class="form-field">
-        <label class="form-label" for="account-input">${t.title}</label>
-        <input id="account-input" type="text" class="form-select" autocomplete="off" />
-        <p class="account-warning">${t.warning}</p>
-        <p id="account-error" class="account-error" style="display:none;"></p>
+        <label class="form-label" for="account-input">
+          ${t.title}
+        </label>
+        <input
+          id="account-input"
+          type="text"
+          class="form-select"
+          autocomplete="off"
+          placeholder="${t.placeholder}"
+        />
+        <p class="account-warning">
+          ${t.warning}
+        </p>
+        <p class="account-error" id="account-error" style="display:none;"></p>
       </div>
-
       <div class="send-actions">
-        <button id="account-check-btn" class="primary-btn">${t.button}</button>
+        <button type="button" class="primary-btn" id="account-check-btn">
+          ${t.button}
+        </button>
       </div>
     </section>
   `;
 }
 
-// ========== СОБЫТИЯ ==========
+// ========== ОБРАБОТКА СОБЫТИЙ ==========
 
+// Делегируем клики по кнопкам главной (ФЛ / ЮЛ / Поставщик),
+// по кнопке "Продолжить" и по кнопке "Проверить" ЛС
 document.addEventListener('click', (event) => {
   const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
 
-  const type = target.getAttribute('data-client-type');
-  if (type) {
-    state.clientType = type;
+  // Кнопки выбора типа клиента на главной
+  const clientType = target.getAttribute('data-client-type');
+  if (clientType) {
+    state.clientType = clientType; // 'FL' | 'UL' | 'SUPPLIER'
     state.selectedLocation = createEmptyLocation();
     state.currentPage = 'send';
     render();
+    closeMobileMenu();
     return;
   }
 
+  // Кнопка "Продолжить" на странице send
   if (target.id === 'send-continue-btn') {
     handleSendContinue();
     return;
   }
 
+  // Кнопка "Проверить / Тексеру" на странице input_account
   if (target.id === 'account-check-btn') {
     handleAccountCheck();
     return;
   }
 });
 
+// Изменения в селектах KATO
 document.addEventListener('change', (event) => {
   const target = event.target;
-
   if (!(target instanceof HTMLSelectElement)) return;
   if (!target.classList.contains('form-select')) return;
 
-  const level = Number(target.getAttribute('data-level'));
+  const levelStr = target.getAttribute('data-level');
+  const level = levelStr ? parseInt(levelStr, 10) : NaN;
+  if (!level || level < 1 || level > 4) return;
+
   const value = target.value || null;
-
-  if (!state.selectedLocation) state.selectedLocation = createEmptyLocation();
-  const loc = state.selectedLocation;
-
-  if (level === 1) {
-    loc.level1 = value;
-    loc.level2 = null;
-    loc.level3 = null;
-    loc.level4 = null;
-    loc.kato = null;
-  } else if (level === 2) {
-    loc.level2 = value;
-    loc.level3 = null;
-    loc.level4 = null;
-    loc.kato = null;
-  } else if (level === 3) {
-    loc.level3 = value;
-    loc.level4 = null;
-    loc.kato = null;
-  } else if (level === 4) {
-    loc.level4 = value;
-    loc.kato = null;
-  }
-
+  updateSelectedLocation(level, value);
   render();
 });
 
-// ========== CONTINUE LOGIC ==========
-
-function handleSendContinue() {
+function updateSelectedLocation(level, kato) {
+  if (!state.selectedLocation) {
+    state.selectedLocation = createEmptyLocation();
+  }
   const loc = state.selectedLocation;
 
-  const n1 = findNodeByKato(MOCK_KATO, loc.level1);
-  const n2 = findNodeByKato(n1?.children || [], loc.level2);
-  const n3 = findNodeByKato(n2?.children || [], loc.level3);
-  const n4 = findNodeByKato(n3?.children || [], loc.level4);
+  switch (level) {
+    case 1:
+      loc.level1 = kato;
+      loc.level2 = null;
+      loc.level3 = null;
+      loc.level4 = null;
+      loc.kato = null;
+      break;
+    case 2:
+      loc.level2 = kato;
+      loc.level3 = null;
+      loc.level4 = null;
+      loc.kato = null;
+      break;
+    case 3:
+      loc.level3 = kato;
+      loc.level4 = null;
+      loc.kato = null;
+      break;
+    case 4:
+      loc.level4 = kato;
+      loc.kato = null;
+      break;
+    default:
+      break;
+  }
+}
 
-  let leaf = null;
-  if (n4) leaf = n4;
-  else if (n3 && n3.children.length === 0) leaf = n3;
-  else if (n2 && n2.children.length === 0) leaf = n2;
-  else if (n1 && n1.children.length === 0) leaf = n1;
+function handleSendContinue() {
+  if (!state.selectedLocation) return;
 
-  if (!leaf) return;
+  const loc = state.selectedLocation;
 
-  loc.kato = leaf.kato;
+  const level1Nodes = MOCK_KATO;
+  const level1Node = findNodeByKato(level1Nodes, loc.level1);
 
-  if (state.clientType === 'FL') state.currentPage = 'input_account';
-  else if (state.clientType === 'UL') state.currentPage = 'ul_identify';
-  else if (state.clientType === 'SUPPLIER') state.currentPage = 'supplier_auth';
-  else state.currentPage = 'input_account';
+  const level2Nodes = level1Node?.children || [];
+  const level2Node = findNodeByKato(level2Nodes, loc.level2);
+
+  const level3Nodes = level2Node?.children || [];
+  const level3Node = findNodeByKato(level3Nodes, loc.level3);
+
+  const level4Nodes = level3Node?.children || [];
+  const level4Node = findNodeByKato(level4Nodes, loc.level4);
+
+  let leafNode = null;
+  if (level4Node) {
+    leafNode = level4Node;
+  } else if (level3Node && (!level3Node.children || level3Node.children.length === 0)) {
+    leafNode = level3Node;
+  } else if (level2Node && (!level2Node.children || level2Node.children.length === 0)) {
+    leafNode = level2Node;
+  } else if (level1Node && (!level1Node.children || level1Node.children.length === 0)) {
+    leafNode = level1Node;
+  }
+
+  if (!leafNode) {
+    return;
+  }
+
+  loc.kato = leafNode.kato;
+
+  if (state.clientType === 'FL') {
+    state.currentPage = 'input_account';
+  } else if (state.clientType === 'UL') {
+    state.currentPage = 'ul_identify';
+  } else if (state.clientType === 'SUPPLIER') {
+    state.currentPage = 'supplier_auth';
+  } else {
+    state.currentPage = 'input_account';
+  }
 
   render();
 }
 
-// ========== API CHECK ACCOUNT ==========
-
+// Вызов /api/check-account
 async function handleAccountCheck() {
   const input = document.getElementById('account-input');
-  const error = document.getElementById('account-error');
+  const errorEl = document.getElementById('account-error');
+  if (!input || !errorEl) return;
 
   const account = input.value.trim();
-  const kato = state.selectedLocation?.kato;
-  const clientType = state.clientType;
 
-  const texts = ABONENT_TEXTS[state.lang].inputAccount;
+  // Скрываем старую ошибку
+  errorEl.style.display = 'none';
+  errorEl.textContent = '';
 
-  error.style.display = 'none';
-  error.textContent = '';
+  if (!account) {
+    return;
+  }
 
-  if (!account || !kato) return;
+  const kato = state.selectedLocation?.kato || null;
+  if (!kato) {
+    console.warn('KATO не выбран, запрос /api/check-account не отправляем');
+    return;
+  }
+
+  const clientType = state.clientType || 'FL';
+
+  const errorNotFoundText =
+    (ABONENT_TEXTS[state.lang] &&
+      ABONENT_TEXTS[state.lang].inputAccount &&
+      ABONENT_TEXTS[state.lang].inputAccount.errorNotFound) ||
+    (state.lang === 'kz'
+      ? 'Есептік нөмір табылмады. Нөмірді тексеріңіз немесе қызмет көрсетушіге жүгініңіз.'
+      : 'Лицевой счёт не найден. Проверьте номер или обратитесь к поставщику услуг.');
 
   try {
-    const res = await fetch(`${API_BASE_URL}/api/check-account`, {
+    const response = await fetch(`${API_BASE_URL}/api/check-account`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ account, kato, clientType }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        account,
+        kato,
+        clientType,
+      }),
     });
 
-    const data = await res.json();
+    if (!response.ok) {
+      console.error('HTTP error /api/check-account', response.status);
+      errorEl.textContent = errorNotFoundText;
+      errorEl.style.display = 'block';
+      return;
+    }
 
-    if (data.found) {
+    const data = await response.json();
+
+    if (data && data.found) {
       state.currentPage = 'choose_service';
       render();
     } else {
-      error.textContent = texts.errorNotFound;
-      error.style.display = 'block';
+      errorEl.textContent = errorNotFoundText;
+      errorEl.style.display = 'block';
     }
-  } catch (e) {
-    console.error('Ошибка при запросе /api/check-account', e);
+  } catch (err) {
+    console.error('Network error /api/check-account', err);
+    errorEl.textContent = errorNotFoundText;
+    errorEl.style.display = 'block';
   }
 }
