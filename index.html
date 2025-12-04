@@ -1,22 +1,41 @@
 <!DOCTYPE html>
-<html lang="kk">
+<html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Abonent.kz</title>
-  <link rel="stylesheet" href="assets/styles.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Abonent.kz</title>
+
+    <!-- Стили -->
+    <link rel="stylesheet" href="assets/styles.css" />
+
+    <!-- Подключаем словарь текстов -->
+    <script src="assets/texts.js"></script>
+
+    <!-- SPA-логика -->
+    <script defer src="assets/app.js"></script>
 </head>
+
 <body>
-  <div id="app">
     <!-- Шапка сайта -->
-    <header id="site-header" class="site-header"></header>
+    <header id="main-header">
+        <div class="logo">Abonent.kz</div>
 
-    <!-- Контейнер для всех страниц -->
-    <main id="site-page" class="site-main"></main>
-  </div>
+        <nav id="main-menu" class="menu-desktop"></nav>
 
-  <!-- Скрипты -->
-  <script src="assets/texts.js"></script>
-  <script src="assets/app.js"></script>
+        <!-- Переключатели языка -->
+        <div id="lang-switcher">
+            <button data-lang="kz" class="lang-btn">KAZ</button>
+            <button data-lang="ru" class="lang-btn">RUS</button>
+        </div>
+
+        <!-- Мобильное меню -->
+        <div id="burger-menu" class="burger">☰</div>
+    </header>
+
+    <!-- Контейнер SPA -->
+    <main id="app"></main>
+
+    <!-- Мобильное выпадающее меню -->
+    <div id="mobile-menu" class="mobile-menu hidden"></div>
 </body>
 </html>
