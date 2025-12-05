@@ -7,12 +7,12 @@ const ABONENT_TEXTS = {
         kz: 'Abonent.kz'
     },
     LANG_KZ: {
-        ru: 'KAZ',
-        kz: 'KAZ'
+        ru: 'KZ',
+        kz: 'KZ'
     },
     LANG_RU: {
-        ru: 'RUS',
-        kz: 'RUS'
+        ru: 'RU',
+        kz: 'RU'
     },
 
     // 2. Меню (Шапка)
