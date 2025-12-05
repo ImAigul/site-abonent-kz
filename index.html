@@ -1,33 +1,139 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Abonent.kz</title>
-
-    <link rel="stylesheet" href="assets/styles.css" />
-    <script src="assets/texts.js"></script>
-    <script src="assets/app.js" defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="app-title">Абонент.kz</title>
+    <link rel="stylesheet" href="assets/styles.css">
+    <!-- Использование шрифта Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
-
 <body>
 
-<header class="header">
-    <div class="header-left">
-        <div id="logo">Abonent.kz</div>
-    </div>
+    <!-- Шапка и навигационное меню -->
+    <header id="header-menu">
+        <div class="logo">
+            <span id="app-title">Абонент.kz</span>
+        </div>
+        
+        <!-- Меню навигации (будет заполнено JS) -->
+        <nav id="nav-menu">
+            <!-- Здесь будут ссылки меню, заполненные JS -->
+        </nav>
+        
+        <!-- Переключатель языка -->
+        <div class="lang-switcher">
+            <span id="lang-ru" data-lang="ru" class="lang-btn active">Рус</span>
+            <span>|</span>
+            <span id="lang-kz" data-lang="kz" class="lang-btn">Қаз</span>
+        </div>
 
-    <nav id="main-menu" class="menu-desktop"></nav>
+        <!-- Кнопка бургер-меню для мобильных -->
+        <button class="burger-menu" id="burger-menu">☰</button>
+    </header>
 
-    <div class="lang-switch">
-        <button id="lang-kz" class="lang-btn">KAZ</button>
-        <button id="lang-ru" class="lang-btn">RUS</button>
-    </div>
-</header>
+    <!-- Основной контент (Single Page Application content) -->
+    <main id="spa-content">
+        <!-- Контент страниц будет загружаться сюда через JS -->
+        <p>Загрузка...</p>
+    </main>
+    
+    <!-- 
+        1. Глобальные переменные для среды Canvas/Firebase. 
+        Необходимы, даже если не используются в текущем коде.
+    -->
+    <script>
+        const __app_id = "abonent-app-id-123";
+        const __firebase_config = "{}"; // В реальном проекте JSON-конфиг Firebase
+        const __initial_auth_token = "mock-auth-token";
+    </script>
 
-<main>
-    <div id="app"></div>
-</main>
+    <!-- 
+        2. Локализационные тексты (должны быть перед app.js)
+        Включает все ключи, используемые в app.js.
+    -->
+    <script>
+        const ABONENT_TEXTS = {
+            TITLE: { ru: "Абонент.kz", kz: "Абонент.kz" },
+            LANG_RU: { ru: "Рус", kz: "Орыс" },
+            LANG_KZ: { ru: "Қаз", kz: "Қаз" },
+
+            MENU_HOME: { ru: "Главная", kz: "Басты бет" },
+            MENU_SEND: { ru: "Передать показания", kz: "Көрсеткіштерді жіберу" },
+            MENU_ABOUT: { ru: "О проекте", kz: "Жоба туралы" },
+            MENU_CONTACTS: { ru: "Контакты", kz: "Байланыс" },
+            MENU_FAQ: { ru: "FAQ", kz: "Жиі қойылатын сұрақтар" },
+
+            HOME_HEADER: { ru: "Добро пожаловать", kz: "Қош келдіңіз" },
+            HOME_SERVICE_CHOICE: { ru: "Выберите ваш статус:", kz: "Мәртебеңізді таңдаңыз:" },
+            
+            BUTTON_FL: { ru: "Физическое лицо (ФЛ)", kz: "Жеке тұлға (ЖТ)" },
+            BUTTON_UL: { ru: "Юридическое лицо (ЮЛ)", kz: "Заңды тұлға (ЗТ)" },
+            BUTTON_SUPPLIER: { ru: "Поставщик услуг", kz: "Қызмет көрсетуші" },
+            
+            LOCATION_LEVEL_1: { ru: "Область/Город", kz: "Облыс/Қала" },
+            LOCATION_LEVEL_2: { ru: "Район", kz: "Аудан" },
+            LOCATION_LEVEL_3: { ru: "Сельский округ", kz: "Ауылдық округ" },
+            LOCATION_LEVEL_4: { ru: "Населенный пункт", kz: "Елді мекен" },
+            BUTTON_CONTINUE: { ru: "Продолжить", kz: "Жалғастыру" },
+
+            FL_ACCOUNT_HEADER: { ru: "Введите лицевой счет", kz: "Жеке шотты енгізіңіз" },
+            UL_CONTRACT_HEADER: { ru: "Данные договора", kz: "Келісімшарт деректері" },
+            UL_CONTRACT_NUMBER: { ru: "Номер договора", kz: "Келісімшарт нөмірі" },
+            UL_CONTRACT_DATE: { ru: "Дата заключения договора", kz: "Келісімшарт жасалған күн" },
+            UL_ADD_COUNTER_LINK: { ru: "+ Добавить счетчик", kz: "+ Есептегіш қосу" }, // для ЮЛ
+            
+            BUTTON_CHECK: { ru: "Проверить данные", kz: "Деректерді тексеру" },
+            BUTTON_SEND: { ru: "Передать показания", kz: "Көрсеткіштерді жіберу" },
+            BUTTON_LOGIN: { ru: "Войти", kz: "Кіру" },
+            BUTTON_LOADING: { ru: "Загрузка...", kz: "Жүктелуде..." },
+            
+            NOTICE_PERIOD: { ru: "Внимание! Показания принимаются с 20 по 26 число каждого месяца.", kz: "Назар аударыңыз! Көрсеткіштер ай сайын 20-сы мен 26-сы аралығында қабылданады." },
+            
+            SERVICE_EE: { ru: "Электроэнергия (ЭЭ)", kz: "Электр энергиясы (ЭЭ)" },
+            SERVICE_HW: { ru: "Горячая вода (ГВ)", kz: "Ыстық су (ЫС)" },
+            SERVICE_CW: { ru: "Холодная вода (ХВ)", kz: "Суық су (СС)" },
+            SERVICE_GAS: { ru: "Газ", kz: "Газ" },
+
+            READINGS_PREVIOUS: { ru: "Последние показания: {value} от {date}", kz: "Соңғы көрсеткіштер: {value}, {date}" },
+            READINGS_INPUT_PLACEHOLDER_FL: { ru: "Введите текущие показания", kz: "Ағымдағы көрсеткіштерді енгізіңіз" },
+            BUTTON_UPLOAD_PHOTO: { ru: "Загрузить фото счетчика", kz: "Есептегіштің фотосын жүктеу" },
+            BUTTON_CONFIRM_AND_SEND: { ru: "Подтвердить и отправить", kz: "Растау және жіберу" },
+            BUTTON_EDIT_DATA: { ru: "Изменить данные", kz: "Деректерді өзгерту" },
+
+            // Сообщения об ошибках
+            ERROR_ACCOUNT_NOT_FOUND: { ru: "Лицевой счет не найден.", kz: "Жеке шот табылмады." },
+            ERROR_CONTRACT_NOT_FOUND: { ru: "Договор или дата неверны.", kz: "Келісімшарт немесе күні қате." },
+            ERROR_INVALID_VALUE_FORMAT: { ru: "Неверный формат показаний.", kz: "Көрсеткіштер форматы қате." },
+            ERROR_OCR_UNREADABLE: { ru: "Фотография неразборчива, повторите.", kz: "Фото түсініксіз, қайталаңыз." },
+            ERROR_OCR_MISMATCH: { ru: "Показания на фото не совпадают с введенными.", kz: "Фотодағы көрсеткіштер енгізілгендермен сәйкес келмейді." },
+            ERROR_VALUE_DECREASED: { ru: "Внимание! Показания уменьшились. Подтвердите, что это верное значение (сброс счетчика).", kz: "Назар аударыңыз! Көрсеткіштер азайған. Бұл дұрыс мән екенін растаңыз (есептегіштің нөлденуі)." },
+            ERROR_OCR_ATTEMPTS_EXCEEDED: { ru: "Превышено количество попыток. Обратитесь в обслуживающую организацию.", kz: "Әрекеттер саны артты. Қызмет көрсетуші ұйымға хабарласыңыз." },
+            ERROR_SUPPLIER_KEY: { ru: "Неверный ключ поставщика или ошибка данных.", kz: "Жеткізуші кілті қате немесе деректер қатесі." },
+
+            // Успех
+            SUCCESS_FINAL_FL: { ru: "Показания успешно приняты!", kz: "Көрсеткіштер сәтті қабылданды!" },
+            SUCCESS_FINAL_UL: { ru: "Данные переданы и ожидают подтверждения.", kz: "Деректер берілді және растауды күтеді." },
+            SUCCESS_FINAL_GENERIC: { ru: "Спасибо за своевременную передачу данных. Вы можете передать показания по другой услуге или вернуться на главную.", kz: "Деректерді уақытылы бергеніңіз үшін рахмет. Басқа қызмет бойынша көрсеткіштерді бере аласыз немесе басты бетке орала аласыз." },
+            SUCCESS_BUTTON_OTHER: { ru: "Передать по другой услуге", kz: "Басқа қызмет бойынша жіберу" },
+            SUCCESS_BUTTON_HOME: { ru: "На главную", kz: "Басты бетке" },
+            
+            // Поставщик
+            SUPPLIER_KEY: { ru: "Секретный ключ поставщика", kz: "Құпия жеткізуші кілті" },
+            REPORT_PERIOD_FROM: { ru: "Период От (Месяц/Год)", kz: "Кезең Бастап (Ай/Жыл)" },
+            REPORT_PERIOD_TO: { ru: "Период До (Месяц/Год)", kz: "Кезең Дейін (Ай/Жыл)" },
+            REPORT_FORMAT_LABEL: { ru: "Формат отчета", kz: "Есеп форматы" },
+            BUTTON_GENERATE_REPORT: { ru: "Сформировать отчет", kz: "Есепті жасау" },
+        };
+    </script>
+
+    <!-- 
+        3. Основной скрипт приложения
+    -->
+    <script src="assets/app.js"></script>
 
 </body>
 </html>
