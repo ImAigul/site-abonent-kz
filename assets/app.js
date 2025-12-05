@@ -1,601 +1,826 @@
-/* ----------------------------------------------------------
-   SPA ДЛЯ ABONENT.KZ — PART 1
-   Все тексты берутся из ABONENT_TEXTS
------------------------------------------------------------ */
+// -----------------------------------------------------------
+// 1. Константы и Глобальное состояние (AppState)
+// -----------------------------------------------------------
 
-let LANGUAGE = localStorage.getItem("lang") || "ru";
-let CURRENT_PAGE = "home";
-let CLIENT_TYPE = null;
-let SELECTED_LOCATION = { code: null };
-let ACCOUNT = null;
-let CONTRACT = null;
-let SERVICE = null;
-let UL_METERS = [];
+// В реальном проекте Worker должен быть развернут и доступен по этому URL
+const API_URL = '/api/'; 
 
-const appEl = document.getElementById("app");
-const mobileMenu = document.getElementById("mobile-menu");
-const burger = document.getElementById("burger-menu");
-const menuDesktop = document.getElementById("main-menu");
+const AppState = {
+    // Состояние локализации
+    CURRENT_LANG: localStorage.getItem('appLang') || 'ru', 
+    CURRENT_PAGE: 'home', 
 
-function t(key) {
-    return ABONENT_TEXTS[LANGUAGE][key];
-}
+    // Состояние пользователя
+    CLIENT_TYPE: null, // FL, UL, SUPPLIER
+    ACCOUNT_OR_CONTRACT: null, 
+    CONTRACT_DATE: null, 
+    IS_SUPPLIER_AUTHORIZED: false,
+    SUPPLIER_AVAILABLE_KATO: [], // КАТО, доступные поставщику
 
-function setLang(lang) {
-    LANGUAGE = lang;
-    localStorage.setItem("lang", lang);
-    render();
-}
+    // Состояние местоположения и услуги
+    SELECTED_LOCATION: {
+        kato: '', 
+        level1: '', 
+        level2: '', 
+        level3: '', 
+        level4: ''
+    },
+    SELECTED_SERVICE: null, 
 
-function api(url, method = "GET", body = null) {
-    const opts = { method };
-    if (body) {
-        opts.headers = { "Content-Type": "application/json" };
-        opts.body = body;
-    }
-    return fetch(url, opts).then(r => r.json());
-}
-
-function renderMenu() {
-    menuDesktop.innerHTML = `
-        <button onclick="go('home')">${t("menu_home")}</button>
-        <button onclick="go('send')">${t("menu_send")}</button>
-        <button onclick="go('about')">${t("menu_about")}</button>
-        <button onclick="go('contacts')">${t("menu_contacts")}</button>
-        <button onclick="go('help')">${t("menu_help")}</button>
-        <button onclick="setLang('kz')">KAZ</button>
-        <button onclick="setLang('ru')">RUS</button>
-    `;
-}
-
-burger.onclick = () => {
-    mobileMenu.classList.toggle("hidden");
-    renderMobileMenu();
+    // Состояние ввода показаний
+    LAST_READINGS: { value: null, date: null },
+    CURRENT_READING_VALUE: null,
+    OCR_ATTEMPTS: 0,
+    READING_VERIFICATION_STATUS: 'PENDING' // PENDING, VALUE_DECREASED, ATTEMPTS_EXCEEDED
 };
 
-function renderMobileMenu() {
-    mobileMenu.innerHTML = `
-        <button onclick="go('home')">${t("menu_home")}</button>
-        <button onclick="go('send')">${t("menu_send")}</button>
-        <button onclick="go('about')">${t("menu_about")}</button>
-        <button onclick="go('contacts')">${t("menu_contacts")}</button>
-        <button onclick="go('help')">${t("menu_help")}</button>
-        <button onclick="setLang('kz')">KAZ</button>
-        <button onclick="setLang('ru')">RUS</button>
+// -----------------------------------------------------------
+// 2. Утилиты
+// -----------------------------------------------------------
+
+/**
+ * Получает локализованный текст.
+ * @param {string} key - Ключ из ABONENT_TEXTS.
+ * @param {Object} [vars={}] - Переменные для подстановки ({value}, {date}).
+ * @returns {string} Локализованный текст.
+ */
+function T(key, vars = {}) {
+    const textObject = ABONENT_TEXTS[key];
+    if (!textObject) {
+        console.error(`Missing text key: ${key}`);
+        return `[MISSING TEXT: ${key}]`;
+    }
+    let text = textObject[AppState.CURRENT_LANG] || textObject['ru'];
+    
+    // Подстановка переменных
+    for (const [varKey, varValue] of Object.entries(vars)) {
+        text = text.replace(new RegExp(`{${varKey}}`, 'g'), varValue);
+    }
+    return text;
+}
+
+/**
+ * Переключает текущий язык.
+ * @param {string} lang - 'ru' или 'kz'.
+ */
+function switchLanguage(lang) {
+    if (AppState.CURRENT_LANG !== lang) {
+        AppState.CURRENT_LANG = lang;
+        localStorage.setItem('appLang', lang);
+        document.documentElement.lang = lang;
+        renderHeader();
+        renderPage(AppState.CURRENT_PAGE);
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.lang === lang);
+        });
+    }
+}
+
+/**
+ * Переключает страницу SPA.
+ * @param {string} page - Имя страницы.
+ */
+function navigate(page) {
+    AppState.CURRENT_PAGE = page;
+    renderPage(page);
+    window.scrollTo(0, 0); 
+}
+
+// -----------------------------------------------------------
+// 3. Рендеринг Шапки
+// -----------------------------------------------------------
+
+function renderHeader() {
+    const menuContainer = document.getElementById('nav-menu');
+    const langKZ = document.getElementById('lang-kz');
+    const langRU = document.getElementById('lang-ru');
+
+    document.getElementById('app-title').textContent = T('TITLE');
+
+    // Обновление переключателей языка
+    if (langKZ) langKZ.textContent = T('LANG_KZ');
+    if (langRU) langRU.textContent = T('LANG_RU');
+
+    // Очистка и заполнение меню
+    menuContainer.innerHTML = `
+        <a href="#" onclick="navigate('home')">${T('MENU_HOME')}</a>
+        <a href="#" onclick="navigate('send')">${T('MENU_SEND')}</a>
+        <a href="#" onclick="navigate('about')">${T('MENU_ABOUT')}</a>
+        <a href="#" onclick="navigate('contacts')">${T('MENU_CONTACTS')}</a>
+        <a href="#" onclick="navigate('faq')">${T('MENU_FAQ')}</a>
     `;
 }
 
-function go(page) {
-    CURRENT_PAGE = page;
-    render();
+// -----------------------------------------------------------
+// 4. Моки для КАТО (Каталог Административно-Территориальных Объектов)
+// -----------------------------------------------------------
+
+const KATO_MOCK_DATA = [
+    { code: '010000000', name_ru: 'г. Астана', name_kz: 'Астана қ.' },
+    { code: '110000000', name_ru: 'Алматинская область', name_kz: 'Алматы облысы' },
+    { code: '111000000', name_ru: 'Илийский район', name_kz: 'Іле ауданы', parent_code: '110000000' },
+    { code: '111030000', name_ru: 'Первомайский с.о.', name_kz: 'Первомай ауылдық округі', parent_code: '111000000' },
+    { code: '111031000', name_ru: 'п. Первомайский', name_kz: 'Первомай кенті', parent_code: '111030000' },
+    { code: '011000000', name_ru: 'район Есиль', name_kz: 'Есіл ауданы', parent_code: '010000000' }
+];
+
+function getKatoOptions(level, parentCode) {
+    if (level === 1) {
+        // Уровень 1: Области/города республиканского значения (код X00000000)
+        return KATO_MOCK_DATA
+            .filter(k => k.code.match(/^\d{2}0000000$/))
+            .map(item => ({ code: item.code, name: item[`name_${AppState.CURRENT_LANG}`] }));
+    }
+    if (parentCode) {
+        // Фильтрация по parent_code
+        return KATO_MOCK_DATA
+            .filter(k => k.parent_code === parentCode)
+            .map(item => ({ code: item.code, name: item[`name_${AppState.CURRENT_LANG}`] }));
+    }
+    return [];
 }
 
-function render() {
-    renderMenu();
+// -----------------------------------------------------------
+// 5. Рендеринг страниц: Общие шаги (Home, Send, Account, Service)
+// -----------------------------------------------------------
 
-    if (CURRENT_PAGE === "home") return renderHome();
-    if (CURRENT_PAGE === "send") return renderKatoLevels();
-    if (CURRENT_PAGE === "input_account") {
-        if (CLIENT_TYPE === "FL") return renderInputAccountFL();
-        if (CLIENT_TYPE === "UL") return renderInputContractUL();
-    }
-    if (CURRENT_PAGE === "choose_service") return renderChooseService();
-    if (CURRENT_PAGE === "input_readings") {
-        if (CLIENT_TYPE === "FL") return renderInputReadingsFL();
-        if (CLIENT_TYPE === "UL") return renderInputReadingsUL();
-    }
-    if (CURRENT_PAGE === "supplier_login") return renderSupplierLogin();
-    if (CURRENT_PAGE === "supplier_report") return renderSupplierReport();
-}
-
-/* ----------------------------------------------------------
-   HOME
------------------------------------------------------------ */
-function renderHome() {
-    appEl.innerHTML = `
-        <div class="card">
-            <p>${t("home_title")}</p>
-            <p>${t("home_choose_service")}</p>
-
-            <button class="btn-primary" onclick="selectType('FL')">${t("home_fl")}</button><br/><br/>
-            <button class="btn-primary" onclick="selectType('UL')">${t("home_ul")}</button><br/><br/>
-            <button class="btn-primary" onclick="selectType('SUPPLIER')">${t("home_supplier")}</button>
+function renderHomePage() {
+    const content = document.getElementById('spa-content');
+    content.innerHTML = `
+        <h1>${T('HOME_HEADER')}</h1>
+        <p>${T('HOME_SERVICE_CHOICE')}</p>
+        <div class="service-choice-grid">
+            <button class="btn service-btn" onclick="selectClientType('FL')">${T('BUTTON_FL')}</button>
+            <button class="btn service-btn" onclick="selectClientType('UL')">${T('BUTTON_UL')}</button>
+            <button class="btn service-btn" onclick="selectClientType('SUPPLIER')">${T('BUTTON_SUPPLIER')}</button>
         </div>
     `;
 }
 
-function selectType(type) {
-    CLIENT_TYPE = type;
-    CURRENT_PAGE = "send";
-    render();
+function selectClientType(type) {
+    AppState.CLIENT_TYPE = type;
+    navigate('send'); 
 }
 
-/* ----------------------------------------------------------
-   KATO CHAIN
------------------------------------------------------------ */
-async function renderKatoLevels() {
-    const data = await api("/api/kato");
+// KATO logic
+function renderSendPage() {
+    const content = document.getElementById('spa-content');
+    content.innerHTML = `
+        <h1>${T('MENU_SEND')}</h1>
+        <div id="kato-form">
+            <div class="form-group">
+                <label for="level1">${T('LOCATION_LEVEL_1')}</label>
+                <select id="level1" data-level="1" onchange="handleKatoChange(1, this.value)"></select>
+            </div>
+            <div class="form-group">
+                <label for="level2">${T('LOCATION_LEVEL_2')}</label>
+                <select id="level2" data-level="2" onchange="handleKatoChange(2, this.value)" disabled></select>
+            </div>
+            <div class="form-group">
+                <label for="level3">${T('LOCATION_LEVEL_3')}</label>
+                <select id="level3" data-level="3" onchange="handleKatoChange(3, this.value)" disabled></select>
+            </div>
+            <div class="form-group">
+                <label for="level4">${T('LOCATION_LEVEL_4')}</label>
+                <select id="level4" data-level="4" onchange="handleKatoChange(4, this.value)" disabled></select>
+            </div>
+            <button id="kato-continue-btn" class="btn" onclick="submitLocation()" disabled>
+                ${T('BUTTON_CONTINUE')}
+            </button>
+        </div>
+    `;
+    populateKatoSelect(1, '');
+}
 
-    appEl.innerHTML = `
-        <div class="card">
-            <label>${t("choose_region_level1")}</label>
-            <select id="k1" onchange="onKatoChange(1)">
-                <option value=""></option>
-                ${data.level1.map(k => `<option value="${k.code}">${k.name}</option>`).join("")}
-            </select>
+function populateKatoSelect(level, parentCode) {
+    const selectElement = document.getElementById(`level${level}`);
+    if (!selectElement) return;
 
-            <label>${t("choose_region_level2")}</label>
-            <select id="k2" onchange="onKatoChange(2)">
-                <option value=""></option>
-            </select>
+    selectElement.disabled = true;
+    selectElement.innerHTML = `<option value="">-- ${T(`LOCATION_LEVEL_${level}`)} --</option>`;
 
-            <label>${t("choose_region_level3")}</label>
-            <select id="k3" onchange="onKatoChange(3)">
-                <option value=""></option>
-            </select>
+    if (!parentCode && level !== 1) return;
 
-            <label>${t("choose_region_level4")}</label>
-            <select id="k4" onchange="onKatoChange(4)">
-                <option value=""></option>
-            </select>
+    const options = getKatoOptions(level, parentCode);
+    
+    options.forEach(option => {
+        selectElement.innerHTML += `<option value="${option.code}">${option.name}</option>`;
+    });
 
-            <button id="btn-continue" class="btn-primary" disabled onclick="gotoAccountPage()">
-                ${t("choose_continue")}
+    if (options.length > 0 || level === 1) {
+        selectElement.disabled = false;
+    }
+}
+
+function handleKatoChange(level, code) {
+    for (let i = level + 1; i <= 4; i++) {
+        populateKatoSelect(i, '');
+        AppState.SELECTED_LOCATION[`level${i}`] = '';
+    }
+
+    AppState.SELECTED_LOCATION[`level${level}`] = code;
+    AppState.SELECTED_LOCATION.kato = code;
+
+    if (code) {
+        populateKatoSelect(level + 1, code);
+    }
+    
+    const btn = document.getElementById('kato-continue-btn');
+    // Проверка, является ли выбранный код конечным (нет следующего уровня или это уровень 4)
+    const nextOptions = getKatoOptions(level + 1, code);
+    btn.disabled = !(code && (level === 4 || nextOptions.length === 0));
+}
+
+function submitLocation() {
+    AppState.SELECTED_LOCATION.kato = 
+        AppState.SELECTED_LOCATION.level4 || 
+        AppState.SELECTED_LOCATION.level3 || 
+        AppState.SELECTED_LOCATION.level2 || 
+        AppState.SELECTED_LOCATION.level1;
+        
+    if (AppState.CLIENT_TYPE === 'SUPPLIER') {
+        navigate('supplier_login');
+    } else {
+        navigate('input_account');
+    }
+}
+
+// FL Account Logic
+function renderFLAccountInput(errorMessage = null) {
+    const content = document.getElementById('spa-content');
+    content.innerHTML = `
+        <h1>${T('FL_ACCOUNT_HEADER')}</h1>
+        <div id="fl-input-form">
+            <div class="form-group">
+                <input type="text" id="account-input" placeholder="${T('FL_ACCOUNT_HEADER')}" value="${AppState.ACCOUNT_OR_CONTRACT || ''}">
+            </div>
+            
+            ${errorMessage ? `<p class="error-message">${errorMessage}</p>` : ''}
+
+            <button class="btn" onclick="checkAccount()">
+                ${T('BUTTON_CHECK')}
+            </button>
+            
+            <p class="notice-period">${T('NOTICE_PERIOD')}</p>
+        </div>
+    `;
+}
+
+async function checkAccount() {
+    const account = document.getElementById('account-input').value.trim();
+    if (!account) return;
+
+    AppState.ACCOUNT_OR_CONTRACT = account;
+    const kato = AppState.SELECTED_LOCATION.kato;
+    const clientType = AppState.CLIENT_TYPE;
+
+    try {
+        const response = await fetch(API_URL + 'check-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ account, kato, clientType })
+        });
+        
+        const data = await response.json();
+
+        if (data.found) {
+            navigate('choose_service');
+        } else {
+            renderFLAccountInput(T('ERROR_ACCOUNT_NOT_FOUND'));
+        }
+    } catch (e) {
+        console.error('Error checking account:', e);
+        renderFLAccountInput(T('ERROR_ACCOUNT_NOT_FOUND')); 
+    }
+}
+
+// UL Contract Logic
+function renderULContractInput(errorMessage = null) {
+    const content = document.getElementById('spa-content');
+    content.innerHTML = `
+        <h1>${T('UL_CONTRACT_HEADER')}</h1>
+        <div id="ul-input-form">
+            <div class="form-group">
+                <label for="contract-number">${T('UL_CONTRACT_NUMBER')}</label>
+                <input type="text" id="contract-number" value="${AppState.ACCOUNT_OR_CONTRACT || ''}">
+            </div>
+            <div class="form-group">
+                <label for="contract-date">${T('UL_CONTRACT_DATE')}</label>
+                <input type="date" id="contract-date" value="${AppState.CONTRACT_DATE || ''}">
+            </div>
+            
+            ${errorMessage ? `<p class="error-message">${errorMessage}</p>` : ''}
+
+            <button class="btn" onclick="checkContract()">
+                ${T('BUTTON_CHECK')}
+            </button>
+            
+            <p class="notice-period">${T('NOTICE_PERIOD')}</p>
+        </div>
+    `;
+}
+
+async function checkContract() {
+    const contractNumber = document.getElementById('contract-number').value.trim();
+    const contractDate = document.getElementById('contract-date').value;
+
+    if (!contractNumber || !contractDate) {
+        renderULContractInput(T('ERROR_CONTRACT_NOT_FOUND')); 
+        return;
+    }
+
+    AppState.ACCOUNT_OR_CONTRACT = contractNumber;
+    AppState.CONTRACT_DATE = contractDate;
+
+    const kato = AppState.SELECTED_LOCATION.kato;
+    const clientType = AppState.CLIENT_TYPE;
+
+    try {
+        const response = await fetch(API_URL + 'check-contract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contractNumber, contractDate, kato, clientType })
+        });
+        
+        const data = await response.json();
+
+        if (data.found) {
+            navigate('choose_service');
+        } else {
+            renderULContractInput(T('ERROR_CONTRACT_NOT_FOUND'));
+        }
+    } catch (e) {
+        console.error('Error checking contract:', e);
+        renderULContractInput(T('ERROR_CONTRACT_NOT_FOUND'));
+    }
+}
+
+// Choose Service Logic
+function renderChooseServicePage() {
+    const content = document.getElementById('spa-content');
+    content.innerHTML = `
+        <h1>${T('HOME_SERVICE_CHOICE')}</h1>
+        <div class="service-choice-grid">
+            <button class="btn service-btn" onclick="selectService('EE')">${T('SERVICE_EE')}</button>
+            <button class="btn service-btn" onclick="selectService('HW')">${T('SERVICE_HW')}</button>
+            <button class="btn service-btn" onclick="selectService('CW')">${T('SERVICE_CW')}</button>
+            <button class="btn service-btn" onclick="selectService('GAS')">${T('SERVICE_GAS')}</button>
+        </div>
+    `;
+}
+
+function selectService(serviceCode) {
+    AppState.SELECTED_SERVICE = serviceCode;
+    AppState.OCR_ATTEMPTS = 0; // Сброс попыток при выборе новой услуги
+    AppState.READING_VERIFICATION_STATUS = 'PENDING';
+    navigate('input_readings'); 
+}
+
+// -----------------------------------------------------------
+// 6. Рендеринг страниц: Ввод показаний (input_readings)
+// -----------------------------------------------------------
+
+async function renderInputReadingsPage(errorMessage = null) {
+    const content = document.getElementById('spa-content');
+    
+    // 1. Получение предыдущих показаний (если еще не получены)
+    if (AppState.LAST_READINGS.value === null) {
+        await fetchPreviousReadings();
+    }
+
+    const previousHTML = AppState.LAST_READINGS.value !== null
+        ? `<div class="previous-readings">${T('READINGS_PREVIOUS', AppState.LAST_READINGS)}</div>`
+        : '';
+        
+    const serviceName = T(`SERVICE_${AppState.SELECTED_SERVICE}`);
+
+    content.innerHTML = `
+        <h1>${serviceName}</h1>
+        ${previousHTML}
+        
+        <form id="readings-form" onsubmit="event.preventDefault(); handleReadingsSubmission()">
+            <h2>${T('READINGS_INPUT_PLACEHOLDER_FL')}</h2>
+            
+            <div class="form-group">
+                <label for="reading-value">${T('READINGS_INPUT_PLACEHOLDER_FL')}</label>
+                <input type="number" step="0.01" id="reading-value" required 
+                       placeholder="00.00" value="${AppState.CURRENT_READING_VALUE || ''}">
+            </div>
+            
+            <div class="form-group">
+                <label for="reading-photo">
+                    ${T('BUTTON_UPLOAD_PHOTO') || 'Загрузить фото счетчика'}
+                </label>
+                <input type="file" id="reading-photo" accept="image/*" required>
+            </div>
+            
+            ${errorMessage ? `<p class="error-message">${errorMessage}</p>` : ''}
+
+            <button type="submit" class="btn" id="send-btn">
+                ${T('BUTTON_SEND')}
+            </button>
+            
+            <p class="notice-period">${T('NOTICE_PERIOD')}</p>
+        </form>
+    `;
+    
+    // Если статус требует подтверждения (показания уменьшились), показываем кнопки подтверждения/изменения
+    if (AppState.READING_VERIFICATION_STATUS === 'VALUE_DECREASED') {
+        const form = document.getElementById('readings-form');
+        form.innerHTML = `
+            ${errorMessage ? `<p class="error-message">${errorMessage}</p>` : ''}
+            
+            <div class="form-group">
+                <button class="btn" style="background-color: ${ABONENT_TEXTS.UL_ADD_COUNTER_LINK.ru ? '#28a745' : '#28a745'}; margin-right: 15px;" onclick="handleReadingsSubmission(true)">
+                    ${T('BUTTON_CONFIRM_AND_SEND')}
+                </button>
+                <button class="btn" onclick="AppState.READING_VERIFICATION_STATUS='PENDING'; renderInputReadingsPage()">
+                    ${T('BUTTON_EDIT_DATA')}
+                </button>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Запрашивает предыдущие показания из Worker.
+ */
+async function fetchPreviousReadings() {
+    const account = AppState.ACCOUNT_OR_CONTRACT;
+    const service = AppState.SELECTED_SERVICE;
+    
+    try {
+        const response = await fetch(`${API_URL}last-readings?account=${account}&service=${service}`);
+        const data = await response.json();
+        
+        if (data.found) {
+            AppState.LAST_READINGS = {
+                value: data.value,
+                date: new Date(data.date).toLocaleDateString(AppState.CURRENT_LANG === 'kz' ? 'kk-KZ' : 'ru-RU')
+            };
+        }
+    } catch (e) {
+        console.error('Failed to fetch previous readings:', e);
+        // Оставляем LAST_READINGS пустым, продолжаем
+    }
+}
+
+/**
+ * Обрабатывает отправку формы показаний.
+ * @param {boolean} [confirmedDecrease=false] - Подтверждено ли уменьшение показаний.
+ */
+async function handleReadingsSubmission(confirmedDecrease = false) {
+    const valueInput = document.getElementById('reading-value');
+    const photoInput = document.getElementById('reading-photo');
+    const sendBtn = document.getElementById('send-btn');
+
+    if (!valueInput || !photoInput) return;
+    
+    const value = parseFloat(valueInput.value);
+
+    if (isNaN(value) || value < 0) {
+        renderInputReadingsPage(T('ERROR_INVALID_VALUE_FORMAT'));
+        return;
+    }
+
+    if (!photoInput.files || photoInput.files.length === 0) {
+        renderInputReadingsPage(T('ERROR_OCR_UNREADABLE')); // Используем общую ошибку для отсутствия фото
+        return;
+    }
+    
+    AppState.CURRENT_READING_VALUE = value;
+
+    // Включение загрузочного состояния
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.textContent = '...'; 
+    }
+
+    const formData = new FormData();
+    formData.append('account', AppState.ACCOUNT_OR_CONTRACT);
+    formData.append('kato', AppState.SELECTED_LOCATION.kato);
+    formData.append('service', AppState.SELECTED_SERVICE);
+    formData.append('valueUser', value);
+    formData.append('photo', photoInput.files[0]);
+    formData.append('ocrAttempts', AppState.OCR_ATTEMPTS);
+    formData.append('confirmedDecrease', confirmedDecrease);
+    
+    try {
+        const response = await fetch(API_URL + 'send-readings', {
+            method: 'POST',
+            body: formData 
+        });
+
+        const data = await response.json();
+        
+        // 1. Успешная отправка (Final Success)
+        if (response.ok && data.status === 'accepted') {
+            navigate('success');
+            return;
+        }
+
+        // 2. Обработка ошибок верификации
+        AppState.OCR_ATTEMPTS++;
+        let errorMessageKey = '';
+        
+        switch (data.code) {
+            case 'OCR_UNREADABLE':
+                errorMessageKey = 'ERROR_OCR_UNREADABLE';
+                break;
+            case 'OCR_MISMATCH':
+                errorMessageKey = 'ERROR_OCR_MISMATCH';
+                break;
+            case 'VALUE_DECREASED':
+                // Переходим в состояние подтверждения
+                AppState.READING_VERIFICATION_STATUS = 'VALUE_DECREASED';
+                errorMessageKey = 'ERROR_VALUE_DECREASED';
+                break;
+            default:
+                errorMessageKey = 'ERROR_OCR_UNREADABLE'; // Общая ошибка
+        }
+        
+        // Проверка превышения попыток после инкремента
+        if (AppState.OCR_ATTEMPTS >= 3) {
+            errorMessageKey = 'ERROR_OCR_ATTEMPTS_EXCEEDED';
+            AppState.READING_VERIFICATION_STATUS = 'ATTEMPTS_EXCEEDED';
+        }
+
+        // Ререндер с ошибкой
+        renderInputReadingsPage(T(errorMessageKey));
+
+    } catch (e) {
+        console.error('Error sending readings:', e);
+        renderInputReadingsPage(T('ERROR_OCR_ATTEMPTS_EXCEEDED'));
+    } finally {
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.textContent = T('BUTTON_SEND');
+        }
+    }
+}
+
+// -----------------------------------------------------------
+// 7. Рендеринг страницы: Успешная отправка
+// -----------------------------------------------------------
+
+function renderSuccessPage() {
+    const content = document.getElementById('spa-content');
+    
+    // Выбор финального сообщения
+    let successMessageKey = 'SUCCESS_FINAL_GENERIC'; 
+    if (AppState.CLIENT_TYPE === 'FL') {
+        successMessageKey = 'SUCCESS_FINAL_FL';
+    } else if (AppState.CLIENT_TYPE === 'UL') {
+        successMessageKey = 'SUCCESS_FINAL_UL';
+    }
+    
+    content.innerHTML = `
+        <div style="text-align: center; padding: 40px; border: 2px solid #28a745; background-color: #e6ffe6; border-radius: 8px;">
+            <h1 style="color: #28a745;">✅ ${T(successMessageKey)}</h1>
+            <p style="margin-bottom: 30px;">
+                ${T('SUCCESS_FINAL_GENERIC')}
+            </p>
+
+            <button class="btn" onclick="navigate('choose_service')" style="background-color: #28a745; margin-right: 15px;">
+                ${T('SUCCESS_BUTTON_OTHER')}
+            </button>
+            <button class="btn" onclick="navigate('home')">
+                ${T('SUCCESS_BUTTON_HOME')}
+            </button>
+        </div>
+    `;
+
+    // Сброс состояния после успешной отправки
+    AppState.CURRENT_READING_VALUE = null;
+    AppState.LAST_READINGS = { value: null, date: null };
+    AppState.OCR_ATTEMPTS = 0;
+    AppState.READING_VERIFICATION_STATUS = 'PENDING';
+}
+
+// -----------------------------------------------------------
+// 8. Рендеринг страниц: Поставщик (Supplier)
+// -----------------------------------------------------------
+
+function renderSupplierLoginPage(errorMessage = null) {
+    const content = document.getElementById('spa-content');
+    content.innerHTML = `
+        <h1>${T('BUTTON_SUPPLIER')}</h1>
+        <div id="supplier-login-form">
+            <div class="form-group">
+                <label for="supplier-key">${T('SUPPLIER_KEY')}</label>
+                <input type="text" id="supplier-key" placeholder="${T('SUPPLIER_KEY')}">
+            </div>
+            
+            ${errorMessage ? `<p class="error-message">${errorMessage}</p>` : ''}
+
+            <button class="btn" onclick="checkSupplierKey()">
+                ${T('BUTTON_LOGIN')}
             </button>
         </div>
     `;
 }
 
-function onKatoChange(level) {
-    const code = document.getElementById("k" + level).value;
-    if (!code) return;
+async function checkSupplierKey() {
+    const key = document.getElementById('supplier-key').value.trim();
+    if (!key) return;
 
-    api(`/api/kato?parent=${code}`).then(r => {
-        if (level === 1) fillSelect("k2", r);
-        if (level === 2) fillSelect("k3", r);
-        if (level === 3) fillSelect("k4", r);
-
-        document.getElementById("btn-continue").disabled = true;
-
-        if (r.length === 0) {
-            SELECTED_LOCATION.code = code;
-            document.getElementById("btn-continue").disabled = false;
-        }
-    });
-
-    if (level === 4) {
-        SELECTED_LOCATION.code = code;
-        document.getElementById("btn-continue").disabled = false;
-    }
-}
-
-function fillSelect(id, arr) {
-    document.getElementById(id).innerHTML =
-        `<option value=""></option>` +
-        arr.map(x => `<option value="${x.code}">${x.name}</option>`).join("");
-}
-
-function gotoAccountPage() {
-    CURRENT_PAGE = "input_account";
-    render();
-}
-
-/* ----------------------------------------------------------
-   ACCOUNT — FL
------------------------------------------------------------ */
-function renderInputAccountFL() {
-    appEl.innerHTML = `
-        <div class="card">
-            <h3>${t("input_account_title_fl")}</h3>
-
-            <input id="acc" type="text" />
-            <p class="warning">${t("input_account_warning")}</p>
-
-            <div id="acc-error" class="warning" style="display:none"></div>
-
-            <button class="btn-primary" onclick="checkAccountFL()">${t("input_account_button")}</button>
-        </div>
-    `;
-}
-
-async function checkAccountFL() {
-    const acc = document.getElementById("acc").value.trim();
-    if (!acc) return;
-
-    const res = await api("/api/check-account", "POST",
-        JSON.stringify({
-            account: acc,
-            kato: SELECTED_LOCATION.code,
-            clientType: "FL"
-        })
-    );
-
-    if (!res.found) {
-        const e = document.getElementById("acc-error");
-        e.innerHTML = t("input_account_not_found");
-        e.style.display = "block";
-        return;
-    }
-
-    ACCOUNT = acc;
-    CURRENT_PAGE = "choose_service";
-    render();
-}
-
-/* ----------------------------------------------------------
-   ACCOUNT — UL
------------------------------------------------------------ */
-function renderInputContractUL() {
-    appEl.innerHTML = `
-        <div class="card">
-            <h3>${t("input_account_title_ul")}</h3>
-
-            <input id="contractNumber" type="text" placeholder="${t("input_contract_number")}" />
-            <input id="contractDate" type="date" placeholder="${t("input_contract_date")}" />
-
-            <p class="warning">${t("input_account_warning")}</p>
-
-            <div id="contract-error" class="warning" style="display:none"></div>
-
-            <button class="btn-primary" onclick="checkContractUL()">${t("input_contract_button")}</button>
-        </div>
-    `;
-}
-
-async function checkContractUL() {
-    const cn = document.getElementById("contractNumber").value.trim();
-    const cd = document.getElementById("contractDate").value;
-
-    const res = await api("/api/check-contract", "POST",
-        JSON.stringify({
-            contractNumber: cn,
-            contractDate: cd,
-            kato: SELECTED_LOCATION.code,
-            clientType: "UL"
-        })
-    );
-
-    if (!res.found) {
-        const e = document.getElementById("contract-error");
-        e.innerHTML = t("input_contract_not_found");
-        e.style.display = "block";
-        return;
-    }
-
-    CONTRACT = { cn, cd };
-    CURRENT_PAGE = "choose_service";
-    render();
-}
-/* ----------------------------------------------------------
-   PART 2 — SERVICE SELECTION + INPUT READINGS FL + UL
------------------------------------------------------------ */
-
-function renderChooseService() {
-    appEl.innerHTML = `
-        <div class="card">
-            <h3>${t("choose_service_title")}</h3>
-
-            <button class="btn-primary" onclick="selectService('EE')">${t("service_ee")}</button><br/><br/>
-            <button class="btn-primary" onclick="selectService('HW')">${t("service_hw")}</button><br/><br/>
-            <button class="btn-primary" onclick="selectService('CW')">${t("service_cw")}</button><br/><br/>
-            <button class="btn-primary" onclick="selectService('GAS')">${t("service_gas")}</button>
-        </div>
-    `;
-}
-
-function selectService(s) {
-    SERVICE = s;
-
-    if (CLIENT_TYPE === "FL") {
-        CURRENT_PAGE = "input_readings";
-        render();
-    }
-
-    if (CLIENT_TYPE === "UL") {
-        UL_METERS = [{ value: "", file: null }];
-        CURRENT_PAGE = "input_readings";
-        render();
-    }
-}
-
-/* ----------------------------------------------------------
-   FL — INPUT READINGS
------------------------------------------------------------ */
-async function renderInputReadingsFL() {
-    const prev = await api(`/api/last-readings?account=${ACCOUNT}&service=${SERVICE}`);
-
-    let prevHTML = "";
-    if (prev && prev.value) {
-        prevHTML = `<p>${t("previous_readings").replace("{value}", prev.value).replace("{date}", prev.date)}</p>`;
-    }
-
-    appEl.innerHTML = `
-        <div class="card">
-            ${prevHTML}
-
-            <input id="reading" type="text" placeholder="0" />
-            <div id="warn" class="warning" style="display:none">${t("readings_warning_input")}</div>
-
-            <input id="photo" type="file" accept="image/*" />
-
-            <button class="btn-primary" onclick="sendReadingsFL()">${t("readings_button_send")}</button>
-        </div>
-    `;
-}
-
-async function sendReadingsFL() {
-    const val = document.getElementById("reading").value.trim();
-    if (!/^[0-9.,]+$/.test(val)) {
-        document.getElementById("warn").style.display = "block";
-        return;
-    }
-
-    const file = document.getElementById("photo").files[0];
-    if (!file) return;
-
-    const fd = new FormData();
-    fd.append("account", ACCOUNT);
-    fd.append("kato", SELECTED_LOCATION.code);
-    fd.append("service", SERVICE);
-    fd.append("value", val);
-    fd.append("photo", file);
-
-    const res = await fetch("/api/send-readings", { method: "POST", body: fd }).then(r => r.json());
-
-    if (res.error === "OCR_UNREADABLE") return showError(t("ocr_unreadable"));
-    if (res.error === "OCR_MISMATCH") return showError(t("ocr_mismatch"));
-    if (res.error === "OCR_ATTEMPTS_EXCEEDED") return showError(t("ocr_attempts_exceeded"));
-
-    if (res.error === "VALUE_DECREASED") return askValueDecreaseFL(fd);
-
-    if (res.status === "accepted") {
-        showSuccess(t("readings_success"));
-        CURRENT_PAGE = "choose_service";
-        render();
-    }
-}
-
-function askValueDecreaseFL(originalFD) {
-    showConfirm(
-        t("readings_decreased"),
-        t("readings_confirm"),
-        () => forceAcceptFL(originalFD)
-    );
-}
-
-function forceAcceptFL(fd) {
-    fd.append("forceaccept", "true");
-    fetch("/api/send-readings", { method: "POST", body: fd })
-        .then(r => r.json())
-        .then(res => {
-            if (res.status === "accepted") {
-                showSuccess(t("readings_success"));
-                CURRENT_PAGE = "choose_service";
-                render();
-            }
+    try {
+        const response = await fetch(API_URL + 'check-supplier-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key })
         });
-}
+        
+        const data = await response.json();
 
-/* ----------------------------------------------------------
-   UL — INPUT MULTIPLE METERS
------------------------------------------------------------ */
-async function renderInputReadingsUL() {
-    let metersHTML = UL_METERS.map((m, i) => `
-        <div class="card meter-block">
-            <h4>№${i + 1}</h4>
-            <input type="text" id="meter-val-${i}" placeholder="0" />
-            <input type="file" id="meter-photo-${i}" accept="image/*" />
-        </div>
-    `).join("");
-
-    appEl.innerHTML = `
-        ${metersHTML}
-
-        <div style="margin-bottom:20px;">
-            <button class="btn-secondary" onclick="addULMeter()">${t("ul_add_meter")}</button>
-            <p style="font-style:italic;">${t("ul_add_meter_hint")}</p>
-        </div>
-
-        <button class="btn-primary" onclick="sendReadingsUL()">${t("readings_button_send")}</button>
-    `;
-}
-
-function addULMeter() {
-    UL_METERS.push({ value: "", file: null });
-    render();
-}
-
-async function sendReadingsUL() {
-    for (let i = 0; i < UL_METERS.length; i++) {
-        const val = document.getElementById(`meter-val-${i}`).value.trim();
-        const file = document.getElementById(`meter-photo-${i}`).files[0];
-
-        if (!/^[0-9.,]+$/.test(val)) {
-            showError(t("readings_warning_input"));
-            return;
+        if (data.found) {
+            AppState.IS_SUPPLIER_AUTHORIZED = true;
+            AppState.SUPPLIER_AVAILABLE_KATO = data.availableKATO;
+            navigate('supplier_report');
+        } else {
+            renderSupplierLoginPage(T('ERROR_SUPPLIER_KEY'));
         }
-        if (!file) {
-            showError(t("photo_required"));
-            return;
-        }
+    } catch (e) {
+        console.error('Error checking supplier key:', e);
+        renderSupplierLoginPage(T('ERROR_SUPPLIER_KEY'));
+    }
+}
 
-        const fd = new FormData();
-        fd.append("contractNumber", CONTRACT.cn);
-        fd.append("contractDate", CONTRACT.cd);
-        fd.append("kato", SELECTED_LOCATION.code);
-        fd.append("service", SERVICE);
-        fd.append("value", val);
-        fd.append("photo", file);
-
-        const res = await fetch("/api/send-readings", { method: "POST", body: fd }).then(r => r.json());
-
-        if (res.error === "OCR_UNREADABLE") return showError(t("ocr_unreadable"));
-        if (res.error === "OCR_MISMATCH") return showError(t("ocr_mismatch"));
-        if (res.error === "OCR_ATTEMPTS_EXCEEDED") return showError(t("ocr_attempts_exceeded"));
-
-        if (res.status !== "accepted") return showError("Ошибка");
+function renderSupplierReportPage(errorMessage = null) {
+    if (!AppState.IS_SUPPLIER_AUTHORIZED) {
+        navigate('supplier_login');
+        return;
     }
 
-    showSuccess(t("ul_success"));
-    CURRENT_PAGE = "choose_service";
-    render();
-}
-
-/* ----------------------------------------------------------
-   SUPPLIER LOGIN
------------------------------------------------------------ */
-function renderSupplierLogin() {
-    appEl.innerHTML = `
-        <div class="card">
-            <input id="supplier-key" type="text" placeholder="${t("supplier_key")}" />
-            <button class="btn-primary" onclick="loginSupplier()">${t("supplier_login")}</button>
-        </div>
-    `;
-}
-
-async function loginSupplier() {
-    const key = document.getElementById("supplier-key").value.trim();
-
-    const res = await api("/api/check-supplier-key", "POST",
-        JSON.stringify({ key })
-    );
-
-    if (!res.ok) return showError(t("supplier_key_invalid"));
-
-    CURRENT_PAGE = "supplier_report";
-    render();
-}
-
-/* ----------------------------------------------------------
-   SUPPLIER REPORT
------------------------------------------------------------ */
-function renderSupplierReport() {
-    appEl.innerHTML = `
-        <div class="card">
-            <label>${t("supplier_period_from")}</label>
-            <input type="month" id="d1" />
-
-            <label>${t("supplier_period_to")}</label>
-            <input type="month" id="d2" />
-
-            <label>${t("supplier_format")}</label>
-            <select id="format">
-                <option value="csv">CSV</option>
-                <option value="xlsx">Excel</option>
-            </select>
-
-            <button class="btn-primary" onclick="downloadReport()">${t("supplier_generate")}</button>
-        </div>
-    `;
-}
-
-function downloadReport() {
-    const d1 = document.getElementById("d1").value;
-    const d2 = document.getElementById("d2").value;
-    const fmt = document.getElementById("format").value;
-
-    window.location = `/api/supplier-report?from=${d1}&to=${d2}&format=${fmt}`;
-}
-
-/* ----------------------------------------------------------
-   PART 3 — COMMON UI HELPERS + FINAL RENDER CALL
------------------------------------------------------------ */
-
-/* ----------------------------------------------------------
-   МОДАЛКИ (БЕЗ ИЗМЕНЕНИЯ ТЕКСТОВ!)
-   ВСЕ сообщения — только через texts.js
------------------------------------------------------------ */
-
-function showError(msg) {
-    const box = document.createElement("div");
-    box.className = "modal error-modal";
-    box.innerHTML = `
-        <div class="modal-content">
-            <p>${msg}</p>
-            <button class="btn-primary" onclick="this.parentNode.parentNode.remove()">OK</button>
-        </div>
-    `;
-    document.body.appendChild(box);
-}
-
-function showSuccess(msg) {
-    const box = document.createElement("div");
-    box.className = "modal success-modal";
-    box.innerHTML = `
-        <div class="modal-content">
-            <p>${msg}</p>
-            <button class="btn-primary" onclick="this.parentNode.parentNode.remove()">OK</button>
-        </div>
-    `;
-    document.body.appendChild(box);
-}
-
-function showConfirm(text1, text2, onConfirm) {
-    const box = document.createElement("div");
-    box.className = "modal confirm-modal";
-    box.innerHTML = `
-        <div class="modal-content">
-            <p>${text1}</p>
-            <p>${text2}</p>
-            <div class="modal-buttons">
-                <button class="btn-primary" id="confirm-yes">${t("confirm_yes")}</button>
-                <button class="btn-secondary" id="confirm-no">${t("confirm_no")}</button>
+    const content = document.getElementById('spa-content');
+    const today = new Date();
+    const defaultDateTo = today.toISOString().substring(0, 7); // YYYY-MM
+    
+    // Для мока KATO выбираем только те, что доступны поставщику (код KATO=010000000)
+    const availableKatoOptions = KATO_MOCK_DATA.filter(k => AppState.SUPPLIER_AVAILABLE_KATO.includes(k.code));
+    
+    content.innerHTML = `
+        <h1>${T('BUTTON_SUPPLIER')}</h1>
+        <div id="supplier-report-form">
+            <div class="form-group">
+                <label for="report-kato">${T('LOCATION_LEVEL_1')}</label>
+                <select id="report-kato" required>
+                    ${availableKatoOptions.map(k => 
+                        `<option value="${k.code}">${k[`name_${AppState.CURRENT_LANG}`]}</option>`
+                    ).join('')}
+                </select>
             </div>
+            
+            <div class="form-group">
+                <label for="date-from">${T('REPORT_PERIOD_FROM')}</label>
+                <input type="month" id="date-from" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="date-to">${T('REPORT_PERIOD_TO')}</label>
+                <input type="month" id="date-to" value="${defaultDateTo}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="report-format">${T('REPORT_FORMAT_LABEL')}</label>
+                <select id="report-format" required>
+                    <option value="CSV">CSV</option>
+                    <option value="XLSX">XLSX (Mock)</option>
+                </select>
+            </div>
+            
+            ${errorMessage ? `<p class="error-message">${errorMessage}</p>` : ''}
+
+            <button class="btn" onclick="generateReport()" id="report-btn">
+                ${T('BUTTON_GENERATE_REPORT')}
+            </button>
         </div>
     `;
-
-    document.body.appendChild(box);
-
-    document.getElementById("confirm-yes").onclick = () => {
-        box.remove();
-        onConfirm();
-    };
-
-    document.getElementById("confirm-no").onclick = () => {
-        box.remove();
-    };
 }
 
-/* ----------------------------------------------------------
-   МАКЕТ МОДАЛОК (CSS СОСТАВЛЯЕТСЯ В styles.css)
------------------------------------------------------------ */
+async function generateReport() {
+    const reportBtn = document.getElementById('report-btn');
+    const kato = document.getElementById('report-kato').value;
+    const dateFrom = document.getElementById('date-from').value;
+    const dateTo = document.getElementById('date-to').value;
+    const format = document.getElementById('report-format').value;
 
-function injectModalCSS() {
-    const css = `
-        .modal {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.45);
-            display: flex; justify-content: center; align-items: center;
-            z-index: 9999;
+    if (!kato || !dateFrom || !dateTo || !format) {
+        renderSupplierReportPage(T('ERROR_SUPPLIER_KEY')); // Используем эту ошибку как заглушку
+        return;
+    }
+    
+    reportBtn.disabled = true;
+    reportBtn.textContent = T('BUTTON_LOADING') || 'Загрузка...';
+
+    // Worker будет возвращать файл с нужными заголовками (Content-Disposition: attachment)
+    try {
+        const response = await fetch(
+            `${API_URL}supplier-report?kato=${kato}&dateFrom=${dateFrom}&dateTo=${dateTo}&format=${format}`, 
+            { method: 'GET' }
+        );
+        
+        if (response.ok) {
+            // Создаем ссылку для скачивания файла
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            // Имя файла берется из заголовка Content-Disposition, если он есть
+            const filename = response.headers.get('Content-Disposition')?.split('filename=')[1] || `report.${format.toLowerCase()}`;
+            a.download = filename.replace(/"/g, ''); // Удаляем кавычки
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            reportBtn.textContent = T('BUTTON_GENERATE_REPORT');
+        } else {
+            const errorText = await response.text();
+            renderSupplierReportPage('Ошибка при получении данных: ' + errorText);
         }
-        .modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            max-width: 420px;
-            width: 90%;
-            text-align: center;
-        }
-        .modal-buttons { 
-            display: flex; 
-            justify-content: space-around; 
-            margin-top: 20px;
-        }
-    `;
-    const style = document.createElement("style");
-    style.textContent = css;
-    document.head.appendChild(style);
+    } catch (e) {
+        console.error('Error generating report:', e);
+        renderSupplierReportPage('Ошибка соединения с сервером.');
+    } finally {
+        reportBtn.disabled = false;
+        reportBtn.textContent = T('BUTTON_GENERATE_REPORT');
+    }
 }
 
-/* ----------------------------------------------------------
-   ДОБАВЛЕНИЕ CSS ДЛЯ МОДАЛОК ПРИ СТАРТЕ
------------------------------------------------------------ */
-injectModalCSS();
 
-/* ----------------------------------------------------------
-   ЗАПУСК ПРИЛОЖЕНИЯ
------------------------------------------------------------ */
-render();
+// -----------------------------------------------------------
+// 9. Главный рендеринг
+// -----------------------------------------------------------
 
+function renderPage(page) {
+    // Сброс сообщений об ошибках
+    document.getElementById('spa-content').querySelectorAll('.error-message').forEach(el => el.remove());
+    
+    switch(page) {
+        case 'home':
+            renderHomePage();
+            break;
+        case 'send':
+            renderSendPage();
+            break;
+        case 'input_account':
+            if (AppState.CLIENT_TYPE === 'FL') {
+                renderFLAccountInput();
+            } else if (AppState.CLIENT_TYPE === 'UL') {
+                renderULContractInput();
+            }
+            break;
+        case 'choose_service':
+            renderChooseServicePage();
+            break;
+        case 'input_readings':
+             renderInputReadingsPage(); 
+            break;
+        case 'success':
+            renderSuccessPage();
+            break;
+        case 'supplier_login':
+            renderSupplierLoginPage();
+            break;
+        case 'supplier_report':
+            renderSupplierReportPage();
+            break;
+        // ... (другие страницы: about, contacts, faq - заглушки)
+        case 'about':
+        case 'contacts':
+        case 'faq':
+            document.getElementById('spa-content').innerHTML = `<h1>${T(`MENU_${page.toUpperCase()}`)}</h1><p>Раздел в разработке.</p>`;
+            break;
+        default:
+            document.getElementById('spa-content').innerHTML = `<h1>404</h1><p>Страница не найдена (${page})</p>`;
+    }
+}
+
+
+// -----------------------------------------------------------
+// 10. Инициализация
+// -----------------------------------------------------------
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Установка языка
+    document.documentElement.lang = AppState.CURRENT_LANG;
+    
+    // Инициализация шапки и контента
+    renderHeader();
+    renderPage(AppState.CURRENT_PAGE);
+
+    // Обработчики переключения языка
+    const langKZ = document.getElementById('lang-kz');
+    const langRU = document.getElementById('lang-ru');
+    if (langKZ) langKZ.addEventListener('click', () => switchLanguage('kz'));
+    if (langRU) langRU.addEventListener('click', () => switchLanguage('ru'));
+    
+    // Обработчик бургер-меню для мобильных
+    const burger = document.getElementById('burger-menu');
+    if (burger) {
+        burger.addEventListener('click', () => {
+            document.getElementById('nav-menu').classList.toggle('active');
+        });
+    }
+});
