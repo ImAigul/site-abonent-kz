@@ -1,191 +1,123 @@
-/* ------------------------------------------
-   БАЗОВЫЕ СТИЛИ
-------------------------------------------- */
-
+/* ----------------------------------------------------------
+   ОБЩИЕ СТИЛИ
+----------------------------------------------------------- */
 body {
     margin: 0;
-    padding: 0;
     font-family: Arial, sans-serif;
-    background: #f7f9fc;
-    color: #2b2b2b;
+    background: #f4f6fb;
+    color: #0b1f3b;
 }
 
 main {
-    max-width: 640px;
-    margin: 0 auto;
     padding: 20px;
 }
 
-/* ------------------------------------------
-   ШАПКА САЙТА
-------------------------------------------- */
+.card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+}
 
-#main-header {
+input, select {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0 20px 0;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+}
+
+button {
+    cursor: pointer;
+}
+
+.btn-primary {
+    width: 100%;
     background: #0b1f3b;
-    color: #ffffff;
-    padding: 12px 20px;
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 5px;
+    font-size: 18px;
+}
+
+.btn-secondary {
+    background: #e3f1ff;
+    border: 1px solid #0b1f3b;
+    color: #0b1f3b;
+    padding: 10px 14px;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+.warning {
+    color: red;
+    font-style: italic;
+    font-size: 14px;
+}
+
+/* ----------------------------------------------------------
+   ХЕДЕР И МЕНЮ
+----------------------------------------------------------- */
+.header {
+    width: 100%;
+    background: #0b1f3b;
+    color: #fff;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    padding: 12px 20px;
+    box-sizing: border-box;
 }
 
-.logo {
-    font-weight: bold;
+#logo {
     font-size: 22px;
+    font-weight: bold;
 }
 
-/* Меню десктоп */
 .menu-desktop {
     display: flex;
     gap: 20px;
+    margin-left: 40px;
+    flex-wrap: wrap;
 }
 
 .menu-desktop button {
     background: transparent;
-    color: #ffffff;
     border: none;
-    cursor: pointer;
-    font-size: 15px;
+    color: white;
+    font-size: 16px;
 }
 
 .menu-desktop button:hover {
-    color: #d1d7e3;
+    opacity: 0.8;
 }
 
-/* Переключатель языка */
-#lang-switcher {
+.lang-switch {
+    margin-left: auto;
     display: flex;
-    gap: 6px;
+    gap: 10px;
 }
 
 .lang-btn {
-    background: transparent;
-    border: 1px solid #ffffff;
-    color: #ffffff;
-    padding: 4px 10px;
+    background: #fff;
+    color: #0b1f3b;
+    border: none;
+    padding: 6px 10px;
     border-radius: 4px;
-    cursor: pointer;
+    font-weight: bold;
 }
 
 .lang-btn:hover {
-    background: #ffffff22;
+    opacity: 0.7;
 }
 
-/* Бургер для мобильных */
-.burger {
-    display: none;
-    font-size: 26px;
-    cursor: pointer;
-}
-
-/* ------------------------------------------
+/* ----------------------------------------------------------
    МОБИЛЬНОЕ МЕНЮ
-------------------------------------------- */
-
-.mobile-menu {
-    background: #0b1f3b;
-    color: white;
-    display: flex;
-    flex-direction: column;
-    padding: 12px;
-    gap: 12px;
-}
-
-.mobile-menu.hidden {
-    display: none;
-}
-
-.mobile-menu button {
-    background: transparent;
-    border: none;
-    color: white;
-    padding: 6px;
-    text-align: left;
-    font-size: 16px;
-}
-
-.mobile-menu button:hover {
-    background: #ffffff22;
-}
-
-/* ------------------------------------------
-   КНОПКИ И ФОРМЫ
-------------------------------------------- */
-
-button {
-    cursor: pointer;
-    border-radius: 6px;
-    border: none;
-    font-size: 16px;
-}
-
-.btn-primary {
-    background: #0b1f3b;
-    color: white;
-    padding: 12px 18px;
-}
-
-.btn-primary:disabled {
-    background: #a7a7a7;
-}
-
-.btn-secondary {
-    background: #eeeeee;
-    padding: 10px 14px;
-}
-
-select, input[type="text"], input[type="number"], input[type="date"] {
-    width: 100%;
-    padding: 12px;
-    font-size: 16px;
-    border: 1px solid #cccccc;
-    border-radius: 6px;
-    margin-bottom: 16px;
-    box-sizing: border-box;
-}
-
-input[type="file"] {
-    margin-top: 10px;
-    margin-bottom: 16px;
-}
-
-/* ------------------------------------------
-   Тексты предупреждений
-------------------------------------------- */
-
-.warning {
-    color: #cc0000;
-    font-style: italic;
-    margin-bottom: 14px;
-}
-
-/* ------------------------------------------
-   КАРТОЧКИ, БЛОКИ
-------------------------------------------- */
-
-.card {
-    background: white;
-    padding: 18px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px #00000015;
-    margin-bottom: 20px;
-}
-
-/* ------------------------------------------
-   АДАПТИВ
-------------------------------------------- */
-
-@media (max-width: 768px) {
+----------------------------------------------------------- */
+@media (max-width: 720px) {
     .menu-desktop {
-        display: none;
-    }
-
-    .burger {
-        display: block;
-        color: white;
-    }
-
-    #lang-switcher {
         display: none;
     }
 }
