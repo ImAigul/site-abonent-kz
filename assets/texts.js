@@ -18,6 +18,24 @@ window.TEXTS = {
       },
 
       chooseService: {},
+      window.TEXTS.kz.pages.chooseService = {
+  title: "Қай қызмет бойынша көрсеткіштерді енгізетініңізді таңдаңыз",
+
+  services: {
+    electricity: "Электр энергиясы",
+    hotwater: "Ыстық су",
+    coldwater: "Суық су",
+    gas: "Газ"
+  },
+
+  serviceSubtitle: "Қызметті таңдаңыз:",
+
+  clientTypes: {
+    fl: "Жеке тұлғалар үшін",
+    ul: "Заңды тұлғалар үшін",
+    supplier: "Қызмет көрсетушілер үшін"
+  }
+};
       inputAccount: {},
       inputContract: {},
       inputReadings: {},
@@ -45,6 +63,24 @@ window.TEXTS = {
       },
 
       chooseService: {},
+      window.TEXTS.ru.pages.chooseService = {
+  title: "Выберите, по какой услуге вводите показания",
+
+  services: {
+    electricity: "Электроэнергия",
+    hotwater: "Горячая вода",
+    coldwater: "Холодная вода",
+    gas: "Газ"
+  },
+
+  serviceSubtitle: "Выберите сервис:",
+
+  clientTypes: {
+    fl: "Для физических лиц",
+    ul: "Для юридических лиц",
+    supplier: "Для поставщиков услуг"
+  }
+};
       inputAccount: {},
       inputContract: {},
       inputReadings: {},
