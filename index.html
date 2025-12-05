@@ -7,33 +7,27 @@
 
     <link rel="stylesheet" href="assets/styles.css" />
     <script src="assets/texts.js"></script>
-    <script defer src="assets/app.js"></script>
+    <script src="assets/app.js" defer></script>
 </head>
 
 <body>
 
-    <!-- ШАПКА САЙТА -->
-    <header class="header">
-        <div class="header-left">
-            <div class="logo">Abonent.kz</div>
-        </div>
+<header class="header">
+    <div class="header-left">
+        <div id="logo">Abonent.kz</div>
+    </div>
 
-        <nav id="main-menu" class="menu-desktop"></nav>
+    <nav id="main-menu" class="menu-desktop"></nav>
 
-        <div class="lang-switch">
-            <button onclick="setLang('kz')">KAZ</button>
-            <button onclick="setLang('ru')">RUS</button>
-        </div>
+    <div class="lang-switch">
+        <button id="lang-kz" class="lang-btn">KAZ</button>
+        <button id="lang-ru" class="lang-btn">RUS</button>
+    </div>
+</header>
 
-        <!-- Бургер для мобильного -->
-        <div id="burger-menu" class="burger">☰</div>
-    </header>
-
-    <!-- Мобильное меню -->
-    <div id="mobile-menu" class="mobile-menu hidden"></div>
-
-    <!-- ОСНОВНОЙ КОНТЕЙНЕР ДЛЯ SPA -->
+<main>
     <div id="app"></div>
+</main>
 
 </body>
 </html>
