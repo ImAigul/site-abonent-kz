@@ -4,25 +4,32 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Abonent.kz</title>
-
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
-
-  <!-- Шапка -->
-  <header id="header">
+  <header class="header">
     <div class="logo">Abonent.kz</div>
-    <nav id="menu"></nav>
-    <div id="lang-switch"></div>
+    <nav class="nav" id="mainNav">
+      <a data-page="home">Басты бет</a>
+      <a data-page="about">Қызмет туралы</a>
+      <a data-page="contacts">Байланыс</a>
+      <a data-page="help">Анықтама</a>
+    </nav>
+    <div class="burger" id="burgerBtn">☰</div>
+    <div class="lang-switch">
+      <span data-lang="kz" class="active">KZ</span> |
+      <span data-lang="ru">RU</span>
+    </div>
   </header>
 
-  <!-- SPA контейнер -->
   <main id="app"></main>
 
-  <!-- Рекламные слоты (контейнеры, будут наполняться при рендере страниц) -->
-  <div id="ad-slot"></div>
+  <footer class="footer">
+    <p>© Abonent.kz</p>
+  </footer>
 
   <script src="assets/texts.js"></script>
   <script src="assets/app.js"></script>
 </body>
 </html>
+
