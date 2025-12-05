@@ -1,1 +1,224 @@
-/* Этап 1: файл intentionally пустой */
+/* ====== BASE STYLES ====== */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #FFFFFF;
+  color: #333333;
+}
+
+/* ====== HEADER ====== */
+.header {
+  background: #0b1f3b;
+  color: #FFFFFF;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.nav {
+  display: flex;
+  gap: 20px;
+}
+
+.nav a {
+  color: #EEEEEE;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav a:hover {
+  color: #DDDDDD;
+}
+
+/* Language switch */
+.lang-switch span {
+  cursor: pointer;
+  color: #FFFFFF;
+}
+
+.lang-switch .active {
+  font-weight: bold;
+}
+
+/* ====== BURGER ====== */
+.burger {
+  display: none;
+  font-size: 26px;
+  cursor: pointer;
+  padding: 5px;
+}
+
+/* ====== MAIN CONTAINER ====== */
+#app {
+  padding: 20px;
+  max-width: 900px;
+  margin: auto;
+}
+
+/* ====== BUTTONS ====== */
+.button {
+  background: #007BFF;
+  color: #FFFFFF;
+  padding: 12px 20px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+.button:disabled {
+  background: #E9ECEF;
+  color: #6C757D;
+  cursor: not-allowed;
+}
+
+/* ====== INPUTS ====== */
+input, select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #CED4DA;
+  border-radius: 6px;
+  margin-top: 5px;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+/* Error text (red) */
+.error-text {
+  color: #DC3545;
+  font-size: 14px;
+  margin-top: -10px;
+  margin-bottom: 10px;
+}
+
+/* Success text (green) */
+.success-text {
+  color: #28A745;
+  font-size: 18px;
+  margin: 15px 0;
+}
+
+/* Info text (gray) */
+.info-text {
+  color: #6C757D;
+  font-size: 14px;
+}
+
+/* ====== OCR ERROR BANNERS ====== */
+.banner {
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  font-size: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.banner-warning {
+  background: #FFF3CD;
+  color: #DC3545;
+}
+
+.banner-critical {
+  background: #F8D7DA;
+  color: #DC3545;
+}
+
+/* ====== SUCCESS PAGE SLOT ====== */
+.ad-slot-success {
+  background: #ADD8E6;
+  width: 468px;
+  height: 60px;
+  margin: 20px auto;
+}
+
+/* ====== MAIN PAGE SLOT ====== */
+.ad-slot-main {
+  background: #ADD8E6;
+  width: 728px;
+  height: 90px;
+  margin: 20px auto;
+}
+
+/* ====== SERVICE PAGE SLOT ====== */
+.ad-slot-service {
+  background: #ADD8E6;
+  width: 300px;
+  height: 250px;
+  margin: 20px auto;
+}
+
+/* ====== UL MULTI-METER BLOCK ====== */
+.meter-block {
+  border: 1px solid #CED4DA;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  background: #F8F8F8;
+}
+
+/* Add meter button */
+.add-meter-btn {
+  background: #007BFF;
+  color: #FFFFFF;
+  padding: 10px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-block;
+  margin-bottom: 15px;
+}
+
+/* ====== SUPPLIER REPORT TABLE ====== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+table th, table td {
+  border: 1px solid #CED4DA;
+  padding: 10px;
+  font-size: 14px;
+}
+
+table th {
+  background: #F2F2F2;
+}
+
+/* ====== FOOTER ====== */
+.footer {
+  text-align: center;
+  padding: 20px;
+  color: #666666;
+  font-size: 14px;
+}
+
+/* ====== MOBILE ADAPTATION ====== */
+@media (max-width: 768px) {
+  .nav {
+    display: none;
+    position: absolute;
+    top: 60px;
+    right: 0;
+    background: #0b1f3b;
+    flex-direction: column;
+    width: 200px;
+    padding: 15px;
+  }
+
+  .nav.open {
+    display: flex;
+  }
+
+  .burger {
+    display: block;
+    color: #FFFFFF;
+  }
+}
