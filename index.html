@@ -1,137 +1,23 @@
 <!DOCTYPE html>
-<html lang="kz">
+<html lang="kk">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Abonent.kz</title>
+
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
 
-  <!-- ШАПКА -->
+  <!-- Шапка -->
   <header id="header">
     <div class="logo">Abonent.kz</div>
     <nav id="menu"></nav>
-    <div id="lang-switch">
-      <button data-lang="kz">KZ</button>
-      <button data-lang="ru">RU</button>
-    </div>
+    <div id="lang-switch"></div>
   </header>
 
-  <!-- ОСНОВНОЙ БЛОК SPA -->
-  <main id="app">
-
-    <!-- HOME -->
-    <section id="page-home" class="page">
-      <h1 id="home-title"></h1>
-      <p id="home-subtitle"></p>
-      <div class="btn-group">
-        <button id="btn-home-fl"></button>
-        <button id="btn-home-ul"></button>
-        <button id="btn-home-supplier"></button>
-      </div>
-    </section>
-
-    <!-- SEND — выбор КАТО -->
-    <section id="page-send" class="page">
-      <h2 id="send-title-1"></h2>
-      <select id="kato-level-1"></select>
-
-      <h2 id="send-title-2"></h2>
-      <select id="kato-level-2"></select>
-
-      <h2 id="send-title-3"></h2>
-      <select id="kato-level-3"></select>
-
-      <h2 id="send-title-4"></h2>
-      <select id="kato-level-4"></select>
-
-      <button id="btn-send-next" disabled></button>
-    </section>
-
-    <!-- INPUT ACCOUNT (ФЛ) -->
-    <section id="page-input-account" class="page">
-      <h2 id="acc-title"></h2>
-      <p id="acc-instr" class="instr"></p>
-      <input id="acc-input" type="text" />
-      <p id="acc-error" class="error"></p>
-      <button id="acc-submit"></button>
-      <p id="acc-warning" class="warning"></p>
-    </section>
-
-    <!-- INPUT CONTRACT (ЮЛ) -->
-    <section id="page-input-contract" class="page">
-      <h2 id="ctr-title"></h2>
-      <input id="ctr-number" type="text" />
-      <input id="ctr-date" type="date" />
-      <button id="ctr-submit"></button>
-      <p id="ctr-warning" class="warning"></p>
-      <p id="ctr-error" class="error"></p>
-    </section>
-
-    <!-- CHOOSE SERVICE -->
-    <section id="page-choose-service" class="page">
-      <h2 id="service-title"></h2>
-      <div class="btn-group">
-        <button data-service="electricity"></button>
-        <button data-service="hotwater"></button>
-        <button data-service="coldwater"></button>
-        <button data-service="gas"></button>
-      </div>
-    </section>
-
-    <!-- INPUT READINGS -->
-    <section id="page-input-readings" class="page">
-      <div id="previous-readings"></div>
-      <label id="readings-label"></label>
-      <input id="readings-input" type="text" />
-      <p id="readings-error" class="error"></p>
-
-      <p id="photo-instr"></p>
-      <input id="photo-input" type="file" accept="image/*" capture="environment" />
-      <button id="readings-submit" disabled></button>
-
-      <div id="multi-meters-container"></div>
-      <button id="btn-add-meter" class="hidden"></button>
-      <p id="multi-meters-hint" class="hint hidden"></p>
-    </section>
-
-    <!-- SUPPLIER LOGIN -->
-    <section id="page-supplier-login" class="page">
-      <h2 id="spl-login-title"></h2>
-      <input id="spl-key" type="text" />
-      <button id="spl-login"></button>
-      <p id="spl-error" class="error"></p>
-    </section>
-
-    <!-- SUPPLIER REPORT -->
-    <section id="page-supplier-report" class="page">
-      <h2 id="spl-report-title"></h2>
-
-      <label>Период:</label>
-      <input id="spl-date-from" type="month" />
-      <input id="spl-date-to" type="month" />
-
-      <label>Формат:</label>
-      <select id="spl-format">
-        <option value="csv">CSV</option>
-        <option value="xlsx">Excel</option>
-      </select>
-
-      <button id="spl-generate"></button>
-      <p id="spl-success" class="success"></p>
-      <a id="spl-download" class="hidden" download>Скачать</a>
-    </section>
-
-  </main>
-
-  <!-- Модальное окно для ошибок -->
-  <div id="modal-error" class="modal hidden">
-    <div class="modal-content">
-      <p id="modal-error-text"></p>
-      <button id="modal-close">OK</button>
-    </div>
-  </div>
+  <!-- Основной контейнер SPA -->
+  <main id="app"></main>
 
   <script src="assets/texts.js"></script>
   <script src="assets/app.js"></script>
