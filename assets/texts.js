@@ -91,7 +91,7 @@ const texts = {
       edit: "Деректерді түзету"
     }
   },
-  
+  
   ru: {
     header: {
       home: "Главная",
@@ -184,4 +184,7 @@ const texts = {
   }
 };
 
-export default texts;
+// Исправление: Присвоить texts глобальному объекту (window) для доступности в app.js
+window.texts = texts;
+
+// УДАЛИТЬ: export default texts;
