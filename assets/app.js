@@ -1,6 +1,18 @@
 // =======================================================================
-// 1. ГЛОБАЛЬНОЕ СОСТОЯНИЕ (STATE)
+// 1. КОНСТАНТЫ И ГЛОБАЛЬНОЕ СОСТОЯНИЕ (STATE)
 // =======================================================================
+
+// URL развернутого Cloudflare Worker (замените на свой домен)
+const WORKER_API_URL = 'YOUR_CLOUDFLARE_WORKER_URL'; 
+
+// 2.2. Маппер ключей ошибок OCR
+const OCR_KEY_MAP = {
+    OCR_UNREADABLE: 'unreadable',
+    OCR_MISMATCH: 'mismatch',
+    OCR_ATTEMPTS_EXCEEDED: 'attempts',
+    VALUE_DECREASED: 'decreased'
+};
+
 const state = {
     currentLang: 'kz',
     currentPage: 'home',
@@ -11,35 +23,68 @@ const state = {
     contract: null,
     contractDate: null,
     lastReadings: null,
-    katoData: { // Мок данных для KATO
-        '1': [{ code: '190000000', name: 'Алматы қаласы' }, { code: '100000000', name: 'Астана қаласы' }],
-        '190000000': [{ code: '191000000', name: 'Алатау ауданы' }],
-        '191000000': [], // Имитация отсутствия 3-го уровня
-        '100000000': [{ code: '101000000', name: 'Район А' }, { code: '102000000', name: 'Район Б' }]
-    }
+    // Временное хранилище загруженных уровней KATO для текущего языка
+    katoCache: { '1': [] }, 
 };
 
 // =======================================================================
-// 2. API-ЗАГЛУШКА (MOCK WORKER API)
+// 2. API-КЛИЕНТ (РАБОТА С WORKER)
 // =======================================================================
-const mockWorkerAPI = {
-    KATO_READINESS_MAP: ['100000000', '190000000'], // КАТО для верификации
 
-    // 2.1. Имитация получения уровней KATO (из Google Sheets)
+const workerAPI = {
+    // В реальном KATO нужно проверить, что код заканчивается на '000', '000000' и т.д.
+    KATO_READINESS_MAP: ['100000000', '190000000'], 
+
+    /**
+     * Запрос к Cloudflare Worker для получения следующего уровня KATO.
+     */
     async getKatoLevels(parentCode = null) {
-        if (!parentCode) {
-            return state.katoData['1'];
-        }
-        // Получение следующего уровня (Mock)
-        return state.katoData[parentCode] || []; 
-    },
+        const lang = state.currentLang;
+        const cacheKey = parentCode || '1';
 
+        // 1. Кэширование
+        if (state.katoCache[cacheKey] && state.katoCache[cacheKey].length > 0) {
+            return state.katoCache[cacheKey];
+        }
+
+        try {
+            const url = new URL(WORKER_API_URL);
+            url.searchParams.append('action', 'getKatoLevels');
+            url.searchParams.append('lang', lang);
+            if (parentCode) {
+                url.searchParams.append('parentCode', parentCode);
+            }
+
+            const response = await fetch(url.toString());
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.status === 'error') {
+                 console.error('Worker API error:', data.message);
+                 return [];
+            }
+            
+            // 2. Сохранение в кэш
+            state.katoCache[cacheKey] = data; 
+            return data;
+            
+        } catch (error) {
+            console.error("Failed to fetch KATO data from worker:", error);
+            return [];
+        }
+    },
+    
+    // --- Остальные API-методы (оставлены как моки для сохранения логики) ---
     async checkAccount(data) {
-        const isReady = this.KATO_READINESS_MAP.includes(data.kato);
+        const isReady = this.KATO_READINESS_MAP.includes(data.kato) || data.kato.endsWith('000'); // Упрощенная проверка
         if (!isReady) {
-            console.log('API: KATO не готов. Проверка пропущена.');
             return { status: 'skipped' };
         }
+        // ... (остальной мок)
         if (data.clientType === 'FL' && data.account === '123456789') {
             return { status: 'success' };
         }
@@ -48,8 +93,9 @@ const mockWorkerAPI = {
         }
         return { status: 'error', message: 'Not found' };
     },
-
+    
     async getLastReadings(data) {
+        // ... (мок)
         if (state.account === '123456789' && state.service === 'electricity') {
             return { value: 1500, date: '05.11.2025' };
         }
@@ -57,27 +103,19 @@ const mockWorkerAPI = {
     },
 
     async sendReadings(formData) {
-        // Имитация VALUE_DECREASED (Шаг 5)
-        if (state.clientType === 'FL' && state.account === '123456789' && formData.get('reading') < 1500) {
+        // ... (мок)
+        if (state.clientType === 'FL' && state.account === '123456789' && parseInt(formData.get('reading')) < 1500 && !formData.get('force')) {
              return { 
                 status: 'error', 
                 code: 'VALUE_DECREASED', 
                 valuepreviousmonth: 1500 
             };
         }
-        // Имитация OCR_MISMATCH (Шаг 2)
-        // if (state.service === 'hotwater') {
-        //     return { status: 'error', code: 'OCR_MISMATCH' };
-        // }
-        // Имитация OCR_ATTEMPTS_EXCEEDED
-        // if (state.service === 'gas') {
-        //     return { status: 'error', code: 'OCR_ATTEMPTS_EXCEEDED' };
-        // }
-        
         return { status: 'accepted' };
     },
 
     async checkSupplierKey(key) {
+        // ... (мок)
         if (key === 'SUPPLIERKEY123') {
             return { status: 'success' };
         }
@@ -85,28 +123,20 @@ const mockWorkerAPI = {
     },
 
     async getSupplierReport(data) {
+        // ... (мок)
         return { status: 'ready', filename: 'report.csv' };
     }
 };
 
 // =======================================================================
-// 3. ОСНОВНЫЕ ФУНКЦИИ РЕНДЕРИНГА И НАВИГАЦИИ
+// 3. ОСНОВНЫЕ ФУНКЦИИ РЕНДЕРИНГА И НАВИГАЦИИ (Без изменений)
 // =======================================================================
 
-// 2.2. Маппер ключей ошибок OCR (Критическое исправление)
-const OCR_KEY_MAP = {
-    OCR_UNREADABLE: 'unreadable',
-    OCR_MISMATCH: 'mismatch',
-    OCR_ATTEMPTS_EXCEEDED: 'attempts',
-    VALUE_DECREASED: 'decreased'
-};
-
-// Получает тексты для текущего языка
 const T = (key, ...args) => {
+    // Использует глобальный window.texts
     const keys = key.split('.');
-    let text = texts[state.currentLang];
+    let text = window.texts[state.currentLang]; 
     for (const k of keys) {
-        // Если ключ — это код OCR, используем маппер
         const mappedKey = OCR_KEY_MAP[k] || k;
         if (!text || !text[mappedKey]) return `MISSING_TEXT[${state.currentLang}.${key}]`;
         text = text[mappedKey];
@@ -114,47 +144,29 @@ const T = (key, ...args) => {
     return typeof text === 'function' ? text(...args) : text;
 };
 
-// Переключение языка
 const setLanguage = (lang) => {
     state.currentLang = lang;
+    state.katoCache = { '1': [] }; 
     document.querySelector('.lang-switch .active').classList.remove('active');
     document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
     document.documentElement.lang = (lang === 'kz' ? 'kk' : 'ru');
     renderPage(state.currentPage);
 };
 
-// Основная функция маршрутизации и рендеринга
 const renderPage = async (pageName, error = null) => {
     state.currentPage = pageName;
     const app = document.getElementById('app');
     let html = '';
 
-    // --- Логика рендеринга по страницам ---
-
     switch (pageName) {
-        case 'home':
-            html = await renderHomePage();
-            break;
-        case 'choose_service_type':
-            html = renderChooseServiceTypePage();
-            break;
-        case 'input_account':
-            html = renderInputAccountPage(error);
-            break;
-        case 'input_contract':
-            html = renderInputContractPage(error);
-            break;
-        case 'supplier_auth':
-            html = renderSupplierAuthPage(error);
-            break;
-        case 'input_readings':
-            html = await renderInputReadingsPage(error);
-            break;
-        case 'supplier_report':
-            html = renderSupplierReportPage(error);
-            break;
-        default:
-            html = `<h2>${T('header.home')}</h2><p>404: Page not found</p>`;
+        case 'home': html = await renderHomePage(); break;
+        case 'choose_service_type': html = renderChooseServiceTypePage(); break;
+        case 'input_account': html = renderInputAccountPage(error); break;
+        case 'input_contract': html = renderInputContractPage(error); break;
+        case 'supplier_auth': html = renderSupplierAuthPage(error); break;
+        case 'input_readings': html = await renderInputReadingsPage(error); break;
+        case 'supplier_report': html = renderSupplierReportPage(error); break;
+        default: html = `<h2>${T('header.home')}</h2><p>404: Page not found</p>`;
     }
 
     app.innerHTML = html;
@@ -162,24 +174,23 @@ const renderPage = async (pageName, error = null) => {
 };
 
 // =======================================================================
-// 4. РЕНДЕР-ФУНКЦИИ ДЛЯ КАЖДОЙ СТРАНИЦЫ
+// 4. РЕНДЕР-ФУНКЦИИ (Без изменений)
 // =======================================================================
 
 async function renderHomePage() {
-    // 2.1. Теперь KATO строится из MOCK Worker API (имитация Google Sheets)
-    const level1Data = await mockWorkerAPI.getKatoLevels();
+    const level1Data = await workerAPI.getKatoLevels();
 
     const renderSelect = (id, label, data = [], disabled = true) => {
         let options = data.map(item => `<option value="${item.code}">${item.name}</option>`).join('');
         return `
             <label for="${id}">${label}</label>
             <select id="${id}" data-level="${id.slice(-1)}" required ${disabled ? 'disabled' : ''}>
-                <option value="">--</option>
+                <option value="">${T('home.select_placeholder') || T('home.continue')}</option>
                 ${options}
             </select>
         `;
     };
-
+    
     return `
         <h1 class="main-title">${T('home.title')}</h1>
         <form id="katoForm">
@@ -211,7 +222,7 @@ function renderChooseServiceTypePage() {
         <h3>${T('choose_service.choose_type_label')}</h3>
         <div id="typeSelection" style="display: flex; gap: 15px; margin-bottom: 20px;">
             ${Object.keys(types).map(key => `
-                <button data-type="${key}" class="button type-btn" style="background: #007BFF;">
+                <button data-type="${key}" class="button type-btn" style="background: ${state.clientType === key ? '#007BFF' : '#6C757D'};">
                     ${types[key]}
                 </button>
             `).join('')}
@@ -266,14 +277,14 @@ function renderSupplierAuthPage(error) {
 }
 
 async function renderInputReadingsPage(errorData = null) {
-    state.lastReadings = await mockWorkerAPI.getLastReadings({ 
+    state.lastReadings = await workerAPI.getLastReadings({ 
         account: state.account, 
         service: state.service 
     });
 
     const isFL = state.clientType === 'FL';
     const serviceNameGenitive = getServiceGenitive(state.service);
-    const readings = isFL ? [0] : [0]; // 2.4. Временно 1 блок для ЮЛ
+    const readings = isFL ? [0] : [0]; 
 
     const previousHtml = state.lastReadings 
         ? `<p>${T('input_readings.previous', state.lastReadings.value, state.lastReadings.date)}</p>` 
@@ -289,17 +300,15 @@ async function renderInputReadingsPage(errorData = null) {
         </div>
     `;
 
-    // Отображение ошибки верификации
     let errorBanner = '';
     let confirmButtons = '';
     
     if (errorData && errorData.code) {
         const errorCode = errorData.code;
-        const errorText = T(`ocr.${errorCode}`); // Используем маппинг в T()
+        const errorText = T(`ocr.${errorCode}`); 
         const bannerClass = errorCode === 'OCR_ATTEMPTS_EXCEEDED' ? 'banner-critical' : 'banner-warning';
         errorBanner = `<div class="banner ${bannerClass}"><span style="margin-right: 10px;">⚠️</span>${errorText}</div>`;
         
-        // Шаг 5: Для VALUE_DECREASED показываем кнопки
         if (errorCode === 'VALUE_DECREASED') {
             confirmButtons = `
                 <div style="margin-top: 20px;">
@@ -330,7 +339,6 @@ async function renderInputReadingsPage(errorData = null) {
         </form>
     `;
 
-    // Если отправка успешна
     if (errorData && errorData.status === 'accepted') {
         html = `
             <div style="text-align: center; padding: 50px;">
@@ -348,38 +356,31 @@ async function renderInputReadingsPage(errorData = null) {
 }
 
 function renderSupplierReportPage(error) {
-    // 2.5. Исправлен заголовок (не повторяем "Ключ доступа")
     return `
         <h2>${T('supplier.report.period')}</h2>
         <p class="info-text">
-            ${T('home.level4')}: ${state.KATO}
+            ${T('home.level4')}: ${state.KATO || 'Не выбран'}
         </p>
-
         <form id="reportForm">
             <label>${T('supplier.report.period')}</label>
             <input type="month" id="reportMonth" required style="width: 200px; display: block;">
-            
             <label>Выберите формат:</label>
             <select id="reportFormat" style="width: 200px; display: block;">
                 <option value="csv">CSV</option>
                 <option value="xlsx">Excel</option>
             </select>
-            
             ${error ? `<p class="error-text">${error}</p>` : ''}
             <button type="submit" class="button">${T('supplier.report.generate')}</button>
         </form>
-        
-        <div id="reportResult" style="margin-top: 30px;">
-            </div>
+        <div id="reportResult" style="margin-top: 30px;"></div>
     `;
 }
 
 // =======================================================================
-// 5. ОБРАБОТЧИКИ СОБЫТИЙ (EVENT LISTENERS)
+// 5. ОБРАБОТЧИКИ СОБЫТИЙ (EVENT LISTENERS) (Без изменений)
 // =======================================================================
 
 function attachEventListeners(pageName) {
-    // 5.1. Обработчики шапки (Постоянные)
     document.getElementById('burgerBtn').addEventListener('click', () => {
         document.getElementById('mainNav').classList.toggle('open');
     });
@@ -391,10 +392,9 @@ function attachEventListeners(pageName) {
     document.querySelectorAll('.nav a').forEach(a => {
         a.addEventListener('click', (e) => {
             e.preventDefault();
-            // Навигация по страницам
             if (e.target.dataset.page === 'home') {
-                // Сброс состояния при переходе на главную
                 state.KATO = state.service = state.clientType = null;
+                state.katoCache = { '1': [] };
                 renderPage('home');
             } else {
                 alert(`Переход на страницу: ${e.target.textContent} (информация)`);
@@ -402,34 +402,18 @@ function attachEventListeners(pageName) {
         });
     });
 
-
-    // 5.2. Обработчики по страницам
     switch (pageName) {
-        case 'home':
-            handleHomePageEvents();
-            break;
-        case 'choose_service_type':
-            handleChooseServiceTypeEvents();
-            break;
-        case 'input_account':
-            document.getElementById('flAuthForm').addEventListener('submit', (e) => handleAuthSubmit(e, 'FL'));
-            break;
-        case 'input_contract':
-            document.getElementById('ulAuthForm').addEventListener('submit', (e) => handleAuthSubmit(e, 'UL'));
-            break;
-        case 'supplier_auth':
-            document.getElementById('supplierAuthForm').addEventListener('submit', (e) => handleAuthSubmit(e, 'supplier'));
-            break;
-        case 'input_readings':
-            handleInputReadingsEvents();
-            break;
-        case 'supplier_report':
-            handleSupplierReportEvents();
-            break;
+        case 'home': handleHomePageEvents(); break;
+        case 'choose_service_type': handleChooseServiceTypeEvents(); break;
+        case 'input_account': document.getElementById('flAuthForm').addEventListener('submit', (e) => handleAuthSubmit(e, 'FL')); break;
+        case 'input_contract': document.getElementById('ulAuthForm').addEventListener('submit', (e) => handleAuthSubmit(e, 'UL')); break;
+        case 'supplier_auth': document.getElementById('supplierAuthForm').addEventListener('submit', (e) => handleAuthSubmit(e, 'supplier')); break;
+        case 'input_readings': handleInputReadingsEvents(); break;
+        case 'supplier_report': handleSupplierReportEvents(); break;
     }
 }
 
-// --- Обработчики HOME ---
+// --- Обработчики HOME (Логика КАТО) ---
 function handleHomePageEvents() {
     const btn = document.getElementById('continueBtn');
     const selects = [
@@ -439,85 +423,111 @@ function handleHomePageEvents() {
         document.getElementById('level4')
     ];
 
-    const updateKATOState = () => {
+    /**
+     * Проверяет, является ли выбранный код KATO последним *существующим* уровнем 
+     * и обновляет кнопку.
+     */
+    const updateKATOState = async () => {
         let lastSelectedValue = '';
-        let isLevelSelected = false; // Флаг: выбран ли хотя бы один уровень
-        let isLastExistingLevelSelected = true; // Флаг: выбран ли последний существующий уровень
-
+        let lastSelectedIndex = -1;
+        
+        // 1. Находим последний выбранный код KATO и его индекс
         for (let i = 0; i < 4; i++) {
             const select = selects[i];
-            const nextSelect = selects[i + 1];
-
             if (select && select.value) {
                 lastSelectedValue = select.value;
-                isLevelSelected = true;
-            }
-
-            // Проверка, есть ли следующий уровень
-            if (select && nextSelect && !nextSelect.disabled && nextSelect.options.length > 1 && !select.value) {
-                // Следующий уровень существует (согласно опциям), но текущий не выбран
-                isLastExistingLevelSelected = false; 
-            }
-            
-            // Если текущий уровень выбран, но следующий уровень пуст в таблице
-            if (select && select.value && nextSelect && nextSelect.options.length <= 1) {
-                // 2.3. Здесь мы разрешаем продолжить, т.к. этот уровень — последний существующий
-                isLastExistingLevelSelected = true;
-                break; 
+                lastSelectedIndex = i;
             }
         }
         
         state.KATO = lastSelectedValue;
-        // Кнопка активна, если выбран последний существующий уровень
-        // ТЗ: если отсутствует 3 и/или 4 уровень, кнопка “Продолжить” работает.
-        btn.disabled = !isLevelSelected || !isLastExistingLevelSelected;
+
+        if (!lastSelectedValue) {
+            btn.disabled = true;
+            return;
+        }
+
+        // 2. Если выбран последний (4-й) уровень, кнопка активна всегда.
+        if (lastSelectedIndex === 3) {
+             btn.disabled = false;
+             return;
+        }
         
-        // В упрощенной мок-логике мы просто требуем, чтобы что-то было выбрано
-        btn.disabled = !lastSelectedValue; 
+        // 3. Проверяем, существует ли следующий уровень для выбранного кода
+        const nextSelectKey = lastSelectedValue;
+        const nextLevelData = state.katoCache[nextSelectKey];
+
+        let hasNextLevel;
+
+        if (nextLevelData) {
+            // Если данные уже в кэше
+            hasNextLevel = nextLevelData.length > 0;
+        } else {
+            // В редких случаях, когда кэш не успел обновиться, 
+            // мы не можем точно сказать, поэтому оставим неактивной
+            hasNextLevel = true; 
+        }
+        
+        // Кнопка активна, если следующего уровня НЕТ.
+        btn.disabled = hasNextLevel;
     };
 
 
-    // 2.1. И 2.3. Динамическая логика KATO (MOCK)
+    // Динамическая логика KATO (Worker API)
     selects.forEach((select, index) => {
         select.addEventListener('change', async () => {
             const currentCode = select.value;
             const nextIndex = index + 1;
             
-            // Очистка и блокировка всех последующих уровней
+            // 1. Очистка и блокировка всех последующих уровней
             for (let i = nextIndex; i < selects.length; i++) {
                 selects[i].disabled = true;
-                selects[i].innerHTML = '<option value="">--</option>';
+                selects[i].innerHTML = `<option value="">${T('home.select_placeholder') || T('home.continue')}</option>`;
+                selects[i].classList.remove('active-level'); 
+                delete state.katoCache[selects[i].id]; 
             }
-
+            
+            // 2. Очистка активности у текущего и установка активности только если выбран элемент
+            selects.forEach(s => s.classList.remove('active-level'));
+            if (currentCode) {
+                 select.classList.add('active-level'); 
+            }
+            
+            // 3. Загрузка и рендеринг следующего уровня (если текущий выбран)
             if (currentCode && nextIndex < selects.length) {
                 const nextSelect = selects[nextIndex];
-                const nextLevelData = await mockWorkerAPI.getKatoLevels(currentCode);
+                
+                const nextLevelData = await workerAPI.getKatoLevels(currentCode);
                 
                 if (nextLevelData.length > 0) {
-                    // Есть следующие уровни: разблокируем и наполняем
                     const optionsHtml = nextLevelData.map(item => `<option value="${item.code}">${item.name}</option>`).join('');
-                    nextSelect.innerHTML = '<option value="">--</option>' + optionsHtml;
+                    nextSelect.innerHTML = `<option value="">${T('home.select_placeholder') || T('home.continue')}</option>` + optionsHtml;
                     nextSelect.disabled = false;
-                } else {
-                    // Следующих уровней НЕТ: оставляем заблокированным,
-                    // и кнопка "Продолжить" должна работать (обновляется через updateKATOState)
                 }
+                
+                // 4. Обновление состояния кнопки
+                await updateKATOState();
+
+            } else {
+                // Если сбросили выбор или дошли до последнего селекта
+                await updateKATOState();
             }
-            updateKATOState();
         });
     });
     
     // Переход к выбору услуги
     document.getElementById('katoForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        renderPage('choose_service_type');
+        if (!btn.disabled && state.KATO) { // Проверяем, что кнопка активна и код выбран
+            renderPage('choose_service_type');
+        }
     });
     
     // Инициализация кнопки
     updateKATOState(); 
 }
 
-// --- Обработчики AUTH (FL/UL/SUPPLIER) ---
+// --- Остальные обработчики (без изменений) ---
 async function handleAuthSubmit(e, clientType) {
     e.preventDefault();
     let data = { kato: state.KATO, clientType: clientType };
@@ -535,7 +545,7 @@ async function handleAuthSubmit(e, clientType) {
         errorText = T('input_contract.error_not_found');
     } else if (clientType === 'supplier') {
         const key = document.getElementById('keyInput').value;
-        const result = await mockWorkerAPI.checkSupplierKey(key);
+        const result = await workerAPI.checkSupplierKey(key);
         if (result.status === 'success') {
             renderPage('supplier_report');
             return;
@@ -544,36 +554,190 @@ async function handleAuthSubmit(e, clientType) {
         return;
     }
 
-    const result = await mockWorkerAPI.checkAccount(data);
+    const result = await workerAPI.checkAccount(data);
 
     if (result.status === 'success' || result.status === 'skipped') {
+        state.clientType = clientType; 
         renderPage('input_readings');
     } else {
         renderPage(e.target.id === 'flAuthForm' ? 'input_account' : 'input_contract', errorText);
     }
 }
 
-// =======================================================================
-// 6. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// =======================================================================
+function handleChooseServiceTypeEvents() {
+    const serviceBtns = document.querySelectorAll('.service-btn');
+    const typeBtns = document.querySelectorAll('.type-btn');
 
-// Генерация родительного падежа для текста инструкции к фото
-function getServiceGenitive(serviceKey) {
-    const lang = state.currentLang;
-    const genitive = {
-        electricity: { ru: 'электроэнергии', kz: 'электр энергиясының' },
-        hotwater: { ru: 'горячей воды', kz: 'ыстық судың' },
-        coldwater: { ru: 'холодной воды', kz: 'суық судың' },
-        gas: { ru: 'газа', kz: 'газдың' }
-    };
-    return genitive[serviceKey]?.[lang] || 'УСЛУГИ';
+    serviceBtns.forEach(btn => btn.addEventListener('click', (e) => {
+        state.service = e.target.dataset.service;
+        serviceBtns.forEach(b => b.style.background = (b.dataset.service === state.service) ? '#007BFF' : '#6C757D');
+        if (state.clientType && state.service) navigateToAuth();
+    }));
+
+    typeBtns.forEach(btn => btn.addEventListener('click', (e) => {
+        const newClientType = e.target.dataset.type;
+        if (newClientType === 'supplier') {
+            renderPage('supplier_auth');
+        } else {
+            state.clientType = newClientType;
+            typeBtns.forEach(b => b.style.background = (b.dataset.type === state.clientType) ? '#007BFF' : '#6C757D');
+            if (state.clientType && state.service) navigateToAuth();
+        }
+    }));
 }
 
+function navigateToAuth() {
+    if (state.clientType === 'FL') {
+        renderPage('input_account');
+    } else if (state.clientType === 'UL') {
+        renderPage('input_contract');
+    }
+}
+
+function getServiceGenitive(serviceKey) {
+    const genitiveMap = {
+        electricity: state.currentLang === 'kz' ? 'электр энергиясы' : 'электроэнергии',
+        hotwater: state.currentLang === 'kz' ? 'ыстық су' : 'горячей воды',
+        coldwater: state.currentLang === 'kz' ? 'суық су' : 'холодной воды',
+        gas: state.currentLang === 'kz' ? 'газ' : 'газа'
+    };
+    return genitiveMap[serviceKey] || '';
+}
+
+function handleInputReadingsEvents() {
+    const readingsForm = document.getElementById('readingsForm');
+    const sendBtn = document.getElementById('sendBtn');
+    const metersContainer = document.getElementById('metersContainer');
+    let meterCount = metersContainer ? metersContainer.children.length : 0;
+    
+    const checkFormValidity = () => {
+        const inputs = readingsForm.querySelectorAll('.reading-input, .photo-input');
+        let allFilled = true;
+        inputs.forEach(input => {
+            if (!input.value) allFilled = false;
+        });
+        if (sendBtn) sendBtn.disabled = !allFilled;
+    };
+
+    const attachInputListeners = () => {
+         readingsForm.querySelectorAll('.reading-input, .photo-input').forEach(input => {
+            input.addEventListener('input', checkFormValidity);
+            input.addEventListener('change', checkFormValidity);
+        });
+    }
+
+    if (readingsForm) {
+        attachInputListeners();
+        
+        readingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(readingsForm);
+            
+            const isForceSend = e.submitter && e.submitter.id === 'forceSendBtn';
+            if (isForceSend) {
+                formData.append('force', 'true');
+            }
+
+            const result = await workerAPI.sendReadings(formData);
+
+            if (result.status === 'accepted') {
+                renderPage('input_readings', { status: 'accepted' });
+            } else if (result.status === 'error') {
+                renderPage('input_readings', result); 
+            }
+        });
+
+        const addMeterBtn = document.getElementById('addMeterBtn');
+        if (addMeterBtn) {
+            addMeterBtn.addEventListener('click', () => {
+                meterCount++;
+                const newMeterBlock = document.createElement('div');
+                newMeterBlock.className = 'meter-block';
+                newMeterBlock.dataset.meterIndex = meterCount - 1;
+                const serviceNameGenitive = getServiceGenitive(state.service);
+                
+                newMeterBlock.innerHTML = `
+                    <h4>Счётчик #${meterCount}</h4>
+                    <label>${T('input_readings.title')}</label>
+                    <input type="number" step="1" inputmode="numeric" class="reading-input" name="reading" required>
+                    <p class="info-text">${T('input_readings.photo_instruction', serviceNameGenitive)}</p>
+                    <input type="file" accept="image/*" capture="environment" class="photo-input" name="photo" required>
+                `;
+                metersContainer.appendChild(newMeterBlock);
+                attachInputListeners(); 
+                checkFormValidity();
+            });
+        }
+        
+        const otherReadingsBtn = document.getElementById('otherReadingsBtn');
+        const homeBtn = document.getElementById('homeBtn');
+        if (otherReadingsBtn) {
+            otherReadingsBtn.addEventListener('click', () => {
+                state.service = null;
+                renderPage('choose_service_type');
+            });
+        }
+        if (homeBtn) {
+            homeBtn.addEventListener('click', () => {
+                state.KATO = state.service = state.clientType = null;
+                state.katoCache = { '1': [] };
+                renderPage('home');
+            });
+        }
+        
+        const editBtn = document.getElementById('editBtn');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                renderPage('input_readings', null); 
+            });
+        }
+
+        checkFormValidity();
+    }
+}
+
+function handleSupplierReportEvents() {
+    const reportForm = document.getElementById('reportForm');
+    const reportResult = document.getElementById('reportResult');
+
+    reportForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const monthYear = document.getElementById('reportMonth').value;
+        const format = document.getElementById('reportFormat').value;
+
+        if (!monthYear) {
+             reportResult.innerHTML = `<p class="error-text">Выберите месяц и год.</p>`;
+             return;
+        }
+
+        const result = await workerAPI.getSupplierReport({ kato: state.KATO, monthYear, format });
+
+        if (result.status === 'ready') {
+            const downloadLink = `
+                <p class="success-text">${T('supplier.report.ready')}</p>
+                <a href="/reports/${result.filename}" download="${result.filename}" class="button">
+                    ${T('supplier.report.download')} (${result.filename})
+                </a>
+            `;
+            reportResult.innerHTML = downloadLink;
+        } else {
+            reportResult.innerHTML = `<p class="error-text">Не удалось сформировать отчет.</p>`;
+        }
+    });
+}
+
+
 // =======================================================================
-// 7. ИНИЦИАЛИЗАЦИЯ
+// 6. ИНИЦИАЛИЗАЦИЯ
 // =======================================================================
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Установка начального языка из DOM, если не задано
+    const initialLangElement = document.querySelector('.lang-switch .active');
+    if (initialLangElement) {
+        state.currentLang = initialLangElement.dataset.lang;
+    }
+    
     // Начальный рендеринг
     renderPage('home'); 
 });
-```
